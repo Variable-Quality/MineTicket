@@ -2,7 +2,7 @@ import discord
 import configparser
 
 cfg = configparser.ConfigParser()
-cfg.read("token.ini")
+cfg.read("config.ini")
 TOKEN = cfg["SECRET"]["token"]
 
 class Client(discord.Client):
