@@ -163,3 +163,4 @@ cython_debug/
 
 >>>>>>> c5ca2208f89f466a1f77b69d07210e5b841f1004
 token.ini
+config.ini
