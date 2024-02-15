@@ -216,6 +216,7 @@ class SQLManager:
                 conn.close()
     
     #Drops a table
+    #This is likely to be removed once the project is deployed, since we dont want old info being deleted.
     def drop_table(self, table:str):
         #yes, I'm sanitizing in the drop table function.
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
@@ -232,7 +233,19 @@ class SQLManager:
             if conn:
                 conn.close()
 
+    def delete_row(self, table:str, variable:str, value:str, type:str):
+        #You know the drill
+        safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
+        safe_variable = re.sub(r"[^0-9A-Za-z]", "", variable)
+        safe_value = re.sub(r"[^0-9A-Za-z]", "", value)
 
+        if type == "int":
+            safe_value = f"{safe_value}"
+        else:
+            safe_value = f"'{safe_value}'"
+
+
+        sql = f"DELETE FROM {safe_table} WHERE {safe_variable}='{safe_value}'"
 
 #Only runs when this py file is run by itself
 #This is basically just my debugging
