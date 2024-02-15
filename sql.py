@@ -92,14 +92,12 @@ class SQLManager:
                 safe_keys.append(safe_key)
 
 
-            sql += " WHERE ".join("f{safe_keys[0]}=?")
-            
+            sql += f" WHERE {safe_keys[0]}=?"
             #TODO:
             #Implement OR statements
-            if len(safe_keys > 1):
+            if len(safe_keys) > 1:
                 for key in safe_keys[1:]:
-                    sql += " AND ".join("f{key}=?")
-
+                    sql += f" AND {key}=?"
             #and the paramaters
             safe_values = []
             for value in where_conditions.values():
@@ -116,7 +114,6 @@ class SQLManager:
             #DEBUGGING
             #print(f"\n{sql}\n")
             #If no conditions, ignore the parameters
-
             if where_conditions:
                 cur.execute(sql, params)
             else:
@@ -247,16 +244,37 @@ class SQLManager:
 
         sql = f"DELETE FROM {safe_table} WHERE {safe_variable}='{safe_value}'"
 
+    #Fetches the entry with the highest ID, presumably the most recently entered ticket
+    #Returns a list containing each item in the row
+    def get_most_recent_entry(self, table:str) -> list:
+        safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
+
+        sql = f"SELECT * FROM {safe_table} ORDER BY id DESC LIMIT 1"
+        try:
+            #Create a connection, insert the data, close the connection.
+            conn = self.create_connection()
+            cur = conn.cursor()
+            cur.execute(sql)
+            result = cur.fetchall()
+            conn.commit()
+        except mariadb.Error as e:
+            print(f"Database error in get_most_recent_entry statement: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+        return result[0]
+
 #Only runs when this py file is run by itself
 #This is basically just my debugging
 if __name__ == "__main__":
     s = SQLManager()
-    s.drop_table("players")
-    data = [("Name", "varchar(255)"), ("ID", "int")]
+    s.drop_table("players")                                                                # May change to int?
+    data = [("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")]
     s.create_table("players", data)
 
-    columns = ["Name", "ID"]
-    values = ["Notch\"\\;", "1"]
+    columns = ["id", "event", "uuid", "discordID", "message"]
+    values = ["1", "create", "uuid goes here", "discord ID goes here", "debug ticket"]
     
     s.insert("players", columns, values)
     print(s.select("*", "players"))
