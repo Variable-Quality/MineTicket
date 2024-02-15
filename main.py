@@ -55,4 +55,3 @@ async def say_fancy(interaction: discord.Interaction, text:str):
      await interaction.send(embed=embed)
 
 bot.run(token=TOKEN)
-
