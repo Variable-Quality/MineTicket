@@ -26,6 +26,9 @@ class SQLManager:
         except TypeError:
             print("Improper port in config file: Non-integer character")
             sys.exit(1)
+
+        #Note: Database name is loaded from config file
+        #May want to add option to be passed into constructor
         self.DATABASE = cfg["DATABASE"]["database"]
 
     def create_connection(self):
@@ -43,6 +46,26 @@ class SQLManager:
             sys.exit(1)
 
         return conn
+    #Resets test database to a default state, containing a single fake ticket.
+    def reset_to_default(self):
+        try:
+            data = [("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")]
+            #Create a connection, fetch the cursor/data, close the connection and return results
+            conn = self.create_connection()
+            cur = conn.cursor()
+            cur.execute("DROP DATABASE test")
+            conn.commit()
+            cur.execute("CREATE DATABASE test")
+            self.create_table("players", data)
+            columns = ["id", "event", "uuid", "discordID", "message"]
+            values = ["1", "create", "uuid goes here", "discord ID goes here", "debug ticket"]
+            self.insert("players", columns, values)
+            conn.commit()
+        except mariadb.Error as e:
+            print(f"Database error in reset_to_default statement: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     #DANGEROUS FUNCTION!!!
     #WILL BE DEPRECIATED LATER
