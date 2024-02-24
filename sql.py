@@ -266,6 +266,54 @@ class SQLManager:
 
 
         sql = f"DELETE FROM {safe_table} WHERE {safe_variable}='{safe_value}'"
+        try:
+           #Create a connection, insert the data, close the connection.
+           conn = self.create_connection()
+           cur = conn.cursor()
+           cur.execute(sql)
+           conn.commit()
+        except mariadb.Error as e:
+            print(f"Database error in update_row statement: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+        
+
+    def update_row(self, table:str, variables:list, values:list, id:int):
+        #Untested, might behave strangely
+        #Assumes table uses IDs as primary key
+
+        if len(variables) != len(values):
+            raise Exception(f"Error in updating SQL row: Variables and Values contain different numbers of input.\nVariables:{variables}\nValues:{values}")
+
+        safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
+        safe_variables = []
+        for item in variables:
+            safe_variables.append(re.sub(r"[^0-9A-Za-z]", "", item))
+        
+        safe_values = []
+        for item in values:
+            safe_values.append(re.sub(r"[^0-9A-Za-z]", "", item))
+
+        sql = f"UPDATE {safe_table} SET"
+        for i in range(0,len(safe_values)-1):
+            sql += f" {safe_variables[i]} = '{safe_values[1]}'"
+            if i < (len(safe_values)-1):
+                sql += ","
+        sql += f"WHERE id = {id};"
+
+        try:
+           #Create a connection, insert the data, close the connection.
+           conn = self.create_connection()
+           cur = conn.cursor()
+           cur.execute(sql)
+           conn.commit()
+        except mariadb.Error as e:
+            print(f"Database error in update_row statement: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     #Fetches the entry with the highest ID, presumably the most recently entered ticket
     #Returns a list containing each item in the row

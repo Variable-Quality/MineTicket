@@ -1,6 +1,44 @@
 from sql import SQLManager
+from os import path
+from configparser import ConfigParser
 import mariadb
 
+#Creates a config file for interfacing with a Database
+#Tables dict should have the table name as the key, and a list of the column names.
+#bear in mind these inputs are NOT santitized, and should not be accessible to users
+def build_cfg(name:str, tables:dict):
+    config = ConfigParser()
+    config["DATABASE"] = {"name" : name}
+    i = 1
+    for key in tables.keys():
+        columns_str = ""
+        for column in tables[key]:
+            columns_str += f"{column},"
+        
+        #Cut off the last comma
+        columns_str = columns_str[:len(columns_str)-1]
+        config["DATABASE"][key] = columns_str
+
+    filename = f"{name}.ini"
+    if path.isfile(filename):
+        with open(filename, "w") as f:
+            config.write(f)
+    else:
+        with open(filename, "x") as f:
+            config.write(f)
+
+
+
+class Database():
+
+    def __init__(self, config:str):
+        cfg = ConfigParser()
+        cfg.read(config)
+        self.name = cfg["DATABASE"]["name"]
+        self.table_names = str(cfg["DATABASE"].keys())
+        self.values = []
+        for table in self.table_names:
+            self.values.append(cfg["DATABASE"][table])
 
 
 #Global variable containing all column names
@@ -37,6 +75,8 @@ class TableEntry():
             self._manager.insert(self.table, columns, values)
         except mariadb.Error as e:
             print(f"Error pushing ticket with ID {self.id} \n{e}")
+
+
 
 #Allows access to the SQLManager reset_to_default command
 def reset_to_default():

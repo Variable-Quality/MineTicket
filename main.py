@@ -64,6 +64,7 @@ async def say(interaction: discord.Interaction, message:str):
     ticket.push()
     await interaction.send(content="Ticket Created!")
 
+#Will be removed with final version
 @bot.hybrid_command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
 async def debug(interaction:discord.Interaction, text:str):
     if text == "reset all":
