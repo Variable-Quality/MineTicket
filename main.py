@@ -29,7 +29,23 @@ class Buttons(discord.ui.View):
     def __init__(self, *, timeout=180):
         super().__init__(timeout=timeout)
 
+    """
+    1 - claim ticket
+    2 - close ticket
+    3 - add user to ticket
+    
+    if userRole in config.rolesList # ['1', '2']
+    """
+
     @discord.ui.button(label="Button", style=discord.ButtonStyle.gray)
+    async def gray_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        await interaction.response.edit_message(
+            content=f"This is an edited button response!"
+        )
+
+    @discord.ui.button(label="Button1", style=discord.ButtonStyle.gray)
     async def gray_button(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
@@ -104,7 +120,7 @@ async def say_fancy(interaction: discord.Interaction, text: str):
 @bot.hybrid_command(
     name="pull_ticket", description="Pulls a ticket from the database given an ID"
 )
-async def pull_ticket(interaction: discord.Interaction, ticket: str):
+async def pull_ticket(ctx, interaction, ticket: str):
     try:
         id = int(ticket)
     except TypeError:
@@ -120,6 +136,47 @@ async def pull_ticket(interaction: discord.Interaction, ticket: str):
     embed = discord.Embed(
         title=f"Ticket ID #{id}", description=desc, color=discord.Color.green()
     )
+    """
+    1 - claim ticket
+    2 - close ticket
+    3 - add user to ticket
+    
+    if userRole in config.rolesList # ['1', '2']
+    """
+
+    def check(msg):
+        return (
+            msg.author == ctx.author
+            and msg.channel == ctx.channel
+            and msg.content.lower() in ["y", "n"]
+            # this part does not work yet, like at all!
+        )
+        # how the hell do we check if the users to be added exist within the discord server?
+
+    @discord.ui.button(label="claim", style=discord.ButtonStyle.gray)
+    async def gray_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        await interaction.send(content="Ticket Created!")
+
+    @discord.ui.button(label="close", style=discord.ButtonStyle.gray)
+    async def gray_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        await interaction.send(content="Ticket Closed!!")
+
+    @discord.ui.button(label="addUser", style=discord.ButtonStyle.gray)
+    async def gray_button(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        await interaction.send(content="Please enter user ID: ")
+        # how the hell do we check if the users to be added exist within the discord server?
+        msg = await bot.wait_for("message", check=check)
+        # This part is where we need to search if the users added even exist on the server!
+        if msg.content.lower() == "y":
+            await ctx.send(f"You added {msg} to the ticket")
+        else:
+            await ctx.send("That user doesn't exist!")
 
     await interaction.send(embed=embed)
 
