@@ -27,7 +27,11 @@ def build_cfg(name:str, tables:dict):
         with open(filename, "x") as f:
             config.write(f)
 
-
+#Debug function to populate database with necessary tables and one sample ticket
+def create_test_entries():
+    s = SQLManager()
+    s.reset_to_default()
+    
 
 class Database():
 
@@ -89,10 +93,6 @@ def fetch_by_id(id:int, table:str):
     return result[0]
 
 if __name__ == "__main__":
-    t = TableEntry("create", "uuid", "discordID", "message", "players")
-    t2 = TableEntry("create", "uuid", "discordID", "message", "players")
-    t2.push()
-    entry = fetch_by_id(1, "players")
-    entry2 = fetch_by_id(2, "players")
-    print(entry)
-    print(entry2)
+    s = SQLManager()
+    s.execute("DROP DATABASE test")
+    create_test_entries()
