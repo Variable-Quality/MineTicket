@@ -3,22 +3,25 @@ from os import path
 from configparser import ConfigParser
 import mariadb
 
-#Creates a config file for interfacing with a Database
-#Tables dict should have the table name as the key, and a list of the column names.
-#bear in mind these inputs are NOT santitized, and should not be accessible to users
-def build_cfg(name:str, tables:dict):
-    config = ConfigParser()
-    config["DATABASE"] = {"name" : name}
-    i = 1
-    for key in tables.keys():
-        columns_str = ""
-        for column in tables[key]:
-            columns_str += f"{column},"
-        
-        #Cut off the last comma
-        columns_str = columns_str[:len(columns_str)-1]
-        config["DATABASE"][key] = columns_str
+#TODO:
+#Create function that adds example entry for testing
 
+#Creates a config file for interfacing with a Database
+#columns list should be tuples of strings
+#First item in the tuple is the column name, second item is the datatype
+def build_cfg(name:str, columns:list):
+    config = ConfigParser()
+    config["TABLE"] = {"name" : name}
+    columns_str = ""
+    datatypes_str = ""
+    config["TABLE"]["columns"] = []
+    config["TABLE"]["datatypes"] = []
+    for column in columns:
+        columns_str += f"{column[0]},"
+        datatypes_str += f"{columns[1]},"
+
+    columns_str = columns_str[:len(columns_str)-1]
+    datatypes_str = datatypes_str[:len(datatypes_str)-1]
     filename = f"{name}.ini"
     if path.isfile(filename):
         with open(filename, "w") as f:
@@ -29,16 +32,18 @@ def build_cfg(name:str, tables:dict):
 
 
 
-class Database():
+class Table():
 
     def __init__(self, config:str):
         cfg = ConfigParser()
         cfg.read(config)
-        self.name = cfg["DATABASE"]["name"]
-        self.table_names = str(cfg["DATABASE"].keys())
-        self.values = []
-        for table in self.table_names:
-            self.values.append(cfg["DATABASE"][table])
+        self.name = cfg["TABLE"]["name"]
+
+        columns_list = cfg["TABLE"]["columns"].split(",")
+        self.columns = columns_list
+
+        datatypes_list = cfg["TABLE"]["datatypes"].split(",")
+        self.datatypes = datatypes_list
 
 
 #Global variable containing all column names
@@ -89,10 +94,6 @@ def fetch_by_id(id:int, table:str):
     return result[0]
 
 if __name__ == "__main__":
-    t = TableEntry("create", "uuid", "discordID", "message", "players")
-    t2 = TableEntry("create", "uuid", "discordID", "message", "players")
-    t2.push()
-    entry = fetch_by_id(1, "players")
-    entry2 = fetch_by_id(2, "players")
-    print(entry)
-    print(entry2)
+    build_cfg("main", {"players" : ["id", "name", "uuid"]})
+    d = Database("main.ini")
+    print(d.values)
