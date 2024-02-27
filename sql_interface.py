@@ -7,21 +7,22 @@ import mariadb
 #Create function that adds example entry for testing
 
 #Creates a config file for interfacing with a Database
-#columns list should be tuples of strings
-#First item in the tuple is the column name, second item is the datatype
+#columns list should be a list of tuples, with the first item being the column name
+#Second tuple item being its datatype
+#Ex: columns=[("id", "int"), ("name", "varchar(255)")]
 def build_cfg(name:str, columns:list):
     config = ConfigParser()
     config["TABLE"] = {"name" : name}
     columns_str = ""
     datatypes_str = ""
-    config["TABLE"]["columns"] = []
-    config["TABLE"]["datatypes"] = []
     for column in columns:
+        
         columns_str += f"{column[0]},"
-        datatypes_str += f"{columns[1]},"
+        datatypes_str += f"{column[1]},"
 
-    columns_str = columns_str[:len(columns_str)-1]
-    datatypes_str = datatypes_str[:len(datatypes_str)-1]
+    config["TABLE"]["columns"] = columns_str[:len(columns_str)-1]
+    config["TABLE"]["datatypes"] = datatypes_str[:len(datatypes_str)-1]
+
     filename = f"{name}.ini"
     if path.isfile(filename):
         with open(filename, "w") as f:
@@ -51,21 +52,17 @@ class Table():
 columns = ["id", "event", "uuid", "discordID", "message"]
 
 class TableEntry():
-
-
     #TODO: Dynamic Column names
 
     #Data handler class for a ticket. Contains everything a ticket should, and can automatically assign a new ticket ID if none is given.
+    #Unless the table entry already exists in the DB, DO NOT ASSIGN IT AN ID!
+    #When the table entry is pushed the system will give it a new ID.
     def __init__(self, event:str, uuid:str, discordID:str, message:str, table:str, id:int = -1):
         self._manager = SQLManager()
         valid_events = ["create", "claim", "close"]
         if event not in valid_events:
             raise Exception(f"Invalid event given to sql_interface: {event}, expected {valid_events}")
         
-        if id == -1:
-            #RACE CONDITION!!!!!!
-            id = int(self._manager.get_most_recent_entry(table)[0]) + 1
-
         self.event = event
         self.uuid = uuid
         self.discordID = discordID
@@ -75,6 +72,9 @@ class TableEntry():
 
     #Adds the Table into the database table specified in the init
     def push(self):
+        #If we haven't given the entry an ID, query the server and give it the next available ID
+        if self.id == -1:
+            self.id = int(self._manager.get_most_recent_entry(self.table)[0])+1
         values = [str(self.id), self.event, self.uuid, self.discordID, self.message]
         try:
             self._manager.insert(self.table, columns, values)
@@ -94,6 +94,6 @@ def fetch_by_id(id:int, table:str):
     return result[0]
 
 if __name__ == "__main__":
-    build_cfg("main", {"players" : ["id", "name", "uuid"]})
-    d = Database("main.ini")
-    print(d.values)
+    build_cfg("main", (("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")))
+    d = Table("main.ini")
+    print(d.columns, d.datatypes)

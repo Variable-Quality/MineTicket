@@ -71,7 +71,7 @@ class SQLManager:
     #WILL BE DEPRECIATED LATER
     #This function exists PURELY for testing raw SQL lines, DO NOT USE IT WITH USER INPUT!!!!
     def execute(self, command, variables=None):
-        conn = self.create_connection("test")
+        conn = self.create_connection()
         cur = conn.cursor()
         if variables:
             cur.execute(command, variables)
