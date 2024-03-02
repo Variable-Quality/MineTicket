@@ -46,10 +46,19 @@ class Table():
         datatypes_list = cfg["TABLE"]["datatypes"].split(",")
         self.datatypes = datatypes_list
 
+    #Pushes table to DB.
+    def push(self):
+        manager = SQLManager()
+        data = []
+        for i in range(0, len(self.columns)-1):
+            data.append((self.columns[i], self.datatypes[i]))
+
+        manager.create_table(self.name, data)
+
 
 #Global variable containing all column names
 #TODO: Get from SQL command directly
-columns = ["id", "event", "uuid", "discordID", "message"]
+columns = ["id", "involved_players", "involved_staff", "message"]
 
 class TableEntry():
     #TODO: Dynamic Column names
@@ -57,15 +66,11 @@ class TableEntry():
     #Data handler class for a ticket. Contains everything a ticket should, and can automatically assign a new ticket ID if none is given.
     #Unless the table entry already exists in the DB, DO NOT ASSIGN IT AN ID!
     #When the table entry is pushed the system will give it a new ID.
-    def __init__(self, event:str, uuid:str, discordID:str, message:str, table:str, id:int = -1):
+    def __init__(self, players:str, staff:str, message:str, table:str, id:int = -1):
         self._manager = SQLManager()
-        valid_events = ["create", "claim", "close"]
-        if event not in valid_events:
-            raise Exception(f"Invalid event given to sql_interface: {event}, expected {valid_events}")
-        
-        self.event = event
-        self.uuid = uuid
-        self.discordID = discordID
+
+        self.involved_players = players
+        self.involved_staff = staff
         self.message = message
         self.table = table
         self.id = id
@@ -74,12 +79,25 @@ class TableEntry():
     def push(self):
         #If we haven't given the entry an ID, query the server and give it the next available ID
         if self.id == -1:
-            self.id = int(self._manager.get_most_recent_entry(self.table)[0])+1
-        values = [str(self.id), self.event, self.uuid, self.discordID, self.message]
+            try:
+                self.id = int(self._manager.get_most_recent_entry(self.table)[0])+1
+            #If theres nothing in the database yet, just give it an ID of 1.
+            #Should never happen, but yknow.
+            except IndexError:
+                self.id = 1
+        else:
+            print(f"WARNING!!! Ticket with ID {self.id} already exists! Use update() instead!")
+            return
+        values = [str(self.id), self.involved_players, self.involved_staff, self.message]
         try:
             self._manager.insert(self.table, columns, values)
         except mariadb.Error as e:
             print(f"Error pushing ticket with ID {self.id} \n{e}")
+
+    #Updates an existing ticket in the database with the current TableEntry object.
+    def update(self):
+        values = [str(self.id), self.involved_players, self.involved_staff, self.message]
+        self._manager.update_row(self.table, columns, values, self.id)
 
 
 
@@ -88,12 +106,21 @@ def reset_to_default():
     manager = SQLManager()
     manager.reset_to_default()
 
-def fetch_by_id(id:int, table:str):
+def fetch_by_id(id:int, table:str) -> TableEntry:
     manager = SQLManager()
-    result = manager.select(columns, table, {"id" : f"{str(id)}"})
-    return result[0]
+    result = manager.select(columns, table, {"id" : f"{str(id)}"})[0]
+    table_entry = TableEntry(players=result[1], staff=result[2], message=result[3], table=table, id=id)
+
+    return table_entry
 
 if __name__ == "__main__":
-    build_cfg("main", (("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")))
-    d = Table("main.ini")
-    print(d.columns, d.datatypes)
+    m = SQLManager()
+    m.reset_to_default()
+    build_cfg("players", (("id", "int"), ("event", "varchar(255)"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)")))
+    d = Table("players.ini")
+    d.push()
+    t = TableEntry("ya mama", "howbowda", "shaboopadoo", "players")
+    t.push()
+    t = TableEntry("Updated ticket", "iushdiug", "god hell fuck", "players", 2)
+    t.update()
+    print(fetch_by_id(2, "players"))
