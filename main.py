@@ -36,6 +36,7 @@ bot = Bot(intents=intents)
 
 # This command isn't working, added sync back to startup for now
 # Todo: Fix this
+# Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
 @bot.command(name='sync', description='Syncs command list, use only when necessary')
 async def sync(interaction:discord.Interaction):
     bot.tree.clear_commands(guild=interaction.guild)
@@ -57,6 +58,7 @@ async def open_ticket(ctx: commands.Context):
     if not tickets_category:
         tickets_category = await ctx.guild.create_category("Tickets")
 
+    # Switch to += 1 from last ticket
     ticket_id = str(random.randint(100000, 999999))
 
     ticket_channel_name = f"ticket-{ticket_id}"
@@ -68,6 +70,64 @@ async def open_ticket(ctx: commands.Context):
     # Reply to the user in the original channel
     await ctx.reply(content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!")
 
+@bot.command(name='claim_ticket', description='Claim a support ticket as a staff member')
+async def claim_ticket(ctx: commands.Context):
+    # Check if in ticket channel
+    if ctx.channel.category and ctx.channel.category.name == "Tickets":
+        # Check role, ex staff
+        staff_role = discord.utils.get(ctx.guild.roles, name="Staff")
+
+        if staff_role and staff_role in ctx.author.roles:
+            # Grab ticket ID from the channel name
+            ticket_id = ctx.channel.name.split("-")[1]
+
+            # Update database logic here
+            
+            await ctx.send(f"Ticket #{ticket_id} has been claimed by {ctx.author.mention}.")
+
+        else:
+            # Non-staff reply
+            await ctx.reply("You need the 'Staff' role to claim a support ticket.")
+
+    else:
+        # Non-ticket channel reply
+        await ctx.reply("This command can only be used in a ticket channel.")
+
+@bot.command(name='close_ticket', description='Close the current ticket')
+async def close_ticket(ctx: commands.Context):
+    # Check if in a ticket channel
+    if ctx.channel.category and ctx.channel.category.name == "Tickets":
+        # Grab ticket ID from the channel name
+        ticket_id = ctx.channel.name.split("-")[1]
+
+        # Archive command here
+
+        await ctx.channel.delete()
+        # Alert mod in DMs
+        await ctx.author.send(f" #{ticket_id} has been closed.")
+
+    else:
+        # Catch non-ticket channels
+        await ctx.reply("This command can only be used in a ticket channel.")
+
+@bot.hybrid_command(name='list_tickets', description='List all open support tickets')
+async def list_tickets(ctx: commands.Context):
+    # Grab live tickets from DB
+    open_tickets = None # (Something like SELECT (["1", "2", "3"]))
+
+    if not open_tickets:
+        await ctx.reply("No open tickets found.")
+        return
+
+    # Create an embed to display ticket information
+    embed = discord.Embed(title="Open Support Tickets", color=discord.Color.orange())
+
+    # Add ticket fields in here
+    # for ticket in open_tickets:
+    #    None = ticket
+    #    embed.add_field()
+
+    await ctx.reply(embed=embed)
 
 @bot.hybrid_command(name='say', description='Make the bot send message')
 async def say(interaction: discord.Interaction, message:str):
