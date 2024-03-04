@@ -299,7 +299,7 @@ class SQLManager:
             safe_values.append(re.sub(r"[^0-9A-Za-z ]", "", item))
 
         sql = f"UPDATE {safe_table} SET"
-        for i in range(0,len(safe_values)):
+        for i in range(1,len(safe_values)):
             sql += f" {safe_variables[i]} = '{safe_values[i]}'"
             if i < (len(safe_values)-1):
                 sql += ","
