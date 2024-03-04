@@ -47,10 +47,10 @@ class SQLManager:
             sys.exit(1)
 
         return conn
-    #Resets test database to a default state, containing a single fake ticket.
-    def reset_to_default(self):
+    #Resets test database to a default state, containing a single fake ticket, if debug_entry = True.
+    def reset_to_default(self, debug_entry=True):
         try:
-            data = [("id", "int"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)")]
+            data = [("id", "int"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")]
             #Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
             cur = conn.cursor()
@@ -58,10 +58,11 @@ class SQLManager:
             conn.commit()
             cur.execute("CREATE DATABASE test")
             self.create_table("players", data)
-            columns = ["id", "involved_players", "involved_staff", "message"]
-            values = ["1", "list of playerids goes here", "list of staffids goes here", "debug ticket"]
-            self.insert("players", columns, values)
-            conn.commit()
+            columns = ["id", "involved_players", "involved_staff", "message", "status"]
+            values = ["1", "list of playerids goes here", "list of staffids goes here", "debug ticket", "open"]
+            if debug_entry:
+                self.insert("players", columns, values)
+                conn.commit()
         except mariadb.Error as e:
             print(f"Database error in reset_to_default statement: {e}")
         finally:
