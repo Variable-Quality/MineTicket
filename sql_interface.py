@@ -44,7 +44,7 @@ class Player():
         self.staff = is_staff
 
     def __str__(self):
-        return f"{self.name}, {self.discord_id}, {str(self.staff)}"
+        return f"{self.name},{self.discord_id},{str(self.staff)}"
 
 #Table object
 #Not too useful now, maybe make the primary way of interacting with tables?
@@ -78,11 +78,12 @@ class Table():
 columns = ["id", "involved_players", "involved_staff", "message", "status"]
 
 class TableEntry():
-    #TODO: Dynamic Column names
+    #TODO: Dynamic Column names, maybe add origin server?
 
     #Data handler class for a ticket. Contains everything a ticket should, and can automatically assign a new ticket ID if none is given.
     #Unless the table entry already exists in the DB, DO NOT ASSIGN IT AN ID!
     #When the table entry is pushed the system will give it a new ID.
+    #
     def __init__(self, players:str, staff:str, message:str, status:str, table:str, id:int = -1):
         self._manager = SQLManager()
 
