@@ -21,10 +21,11 @@ class SQLManager:
         self.USER = cfg["DATABASE"]["user"]
         self.PASSWORD = cfg["DATABASE"]["password"]
         self.HOST = cfg["DATABASE"]["host"]
+        port = cfg["DATABASE"]["port"]
         try:
-            self.PORT = int(cfg["DATABASE"]["port"])
+            self.PORT = int(port)
         except TypeError:
-            print("Improper port in config file: Non-integer character")
+            print(f"Improper port in config file: Non-integer character: {port}")
             sys.exit(1)
 
         #Note: Database name is loaded from config file
@@ -46,10 +47,10 @@ class SQLManager:
             sys.exit(1)
 
         return conn
-    #Resets test database to a default state, containing a single fake ticket.
-    def reset_to_default(self):
+    #Resets test database to a default state, containing a single fake ticket, if debug_entry = True.
+    def reset_to_default(self, debug_entry=True):
         try:
-            data = [("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")]
+            data = [("id", "int"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")]
             #Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
             cur = conn.cursor()
@@ -61,10 +62,11 @@ class SQLManager:
                 
             cur.execute("CREATE DATABASE test")
             self.create_table("players", data)
-            columns = ["id", "event", "uuid", "discordID", "message"]
-            values = ["1", "create", "uuid goes here", "discord ID goes here", "debug ticket"]
-            self.insert("players", columns, values)
-            conn.commit()
+            columns = ["id", "involved_players", "involved_staff", "message", "status"]
+            values = ["1", "list of playerids goes here", "list of staffids goes here", "debug ticket", "open"]
+            if debug_entry:
+                self.insert("players", columns, values)
+                conn.commit()
         except mariadb.Error as e:
             print(f"Database error in reset_to_default statement: {e}")
         finally:
@@ -124,7 +126,7 @@ class SQLManager:
             #Implement OR statements
             if len(safe_keys) > 1:
                 for key in safe_keys[1:]:
-                    sql += f" AND {key}=?"
+                    sql += f' AND {key}='
             #and the paramaters
             safe_values = []
             for value in where_conditions.values():
@@ -298,14 +300,16 @@ class SQLManager:
         
         safe_values = []
         for item in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z]", "", item))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ]", "", item))
 
         sql = f"UPDATE {safe_table} SET"
-        for i in range(0,len(safe_values)-1):
-            sql += f" {safe_variables[i]} = '{safe_values[1]}'"
+        for i in range(1,len(safe_values)):
+            sql += f" {safe_variables[i]} = '{safe_values[i]}'"
             if i < (len(safe_values)-1):
                 sql += ","
-        sql += f"WHERE id = {id};"
+        sql += f" WHERE id = {id}"
+        print(sql)
+
 
         try:
            #Create a connection, insert the data, close the connection.
@@ -343,13 +347,4 @@ class SQLManager:
 #Only runs when this py file is run by itself
 #This is basically just my debugging
 if __name__ == "__main__":
-    s = SQLManager()
-    s.drop_table("players")                                                                # May change to int?
-    data = [("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")]
-    s.create_table("players", data)
-
-    columns = ["id", "event", "uuid", "discordID", "message"]
-    values = ["1", "create", "uuid goes here", "discord ID goes here", "debug ticket"]
-    
-    s.insert("players", columns, values)
-    print(s.select("*", "players"))
+    pass
