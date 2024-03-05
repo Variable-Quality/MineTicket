@@ -226,7 +226,7 @@ class SQLManager:
 
         #Example output:
         #CREATE TABLE players (Name varchar(255), IngameID int, ticketID int)
-        sql = f"CREATE TABLE {safe_table} {table_data_string}"
+        sql = f"CREATE TABLE IF NOT EXISTS {safe_table} {table_data_string}"
         #DEBUGGING
         #print(f"\n{sql}\n")
         try:
