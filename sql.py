@@ -54,8 +54,12 @@ class SQLManager:
             #Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
             cur = conn.cursor()
-            cur.execute("DROP DATABASE test")
-            conn.commit()
+            try:
+                cur.execute("DROP DATABASE test")
+                conn.commit()
+            except mariadb.Error as e:
+                print("Database test does not exist! Continuing on anyway...")
+                
             cur.execute("CREATE DATABASE test")
             self.create_table("players", data)
             columns = ["id", "involved_players", "involved_staff", "message", "status"]
