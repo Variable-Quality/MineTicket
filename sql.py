@@ -95,7 +95,7 @@ class SQLManager:
     #where_conditions = {"name" : "Notch"}
 
     #Doesn't support OR statements yet
-    def select(self, columns:list, table:str, where_conditions=None,):
+    def select(self, columns:list, table:str, where_conditions=None):
 
         #First remove everything except letters/numbers (and the all character) from column names
         safe_columns = []
@@ -327,7 +327,7 @@ class SQLManager:
 
     #Fetches the entry with the highest ID, presumably the most recently entered ticket
     #Returns a list containing each item in the row
-    def get_most_recent_entry(self, table:str) -> list:
+    def get_most_recent_entry(self, table:str, only_id=False) -> list:
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
         sql = f"SELECT * FROM {safe_table} ORDER BY id DESC LIMIT 1"
@@ -343,12 +343,14 @@ class SQLManager:
         finally:
             if conn:
                 conn.close()
-
-        return result[0]
+        if not only_id:
+            return result[0]
+        else:
+            return result[0][0]
 
 #Only runs when this py file is run by itself
 #This is basically just my debugging
 if __name__ == "__main__":
     s = SQLManager()
     s.reset_to_default()
-    print(s.get_most_recent_entry("players"))
+    print(s.get_most_recent_entry("players", True))

@@ -45,6 +45,7 @@ class Player():
 
     def __str__(self):
         return f"{self.name},{self.discord_id},{str(self.staff)}"
+    
 
 #Table object
 #Not too useful now, maybe make the primary way of interacting with tables?
@@ -74,7 +75,7 @@ class Table():
 
 
 #Global variable containing all column names
-#TODO: Get from SQL command directly
+#TODO: Get from SQL command directly (or cfg)
 columns = ["involved_players", "involved_staff", "message", "status"]
 
 class TableEntry():
@@ -129,6 +130,29 @@ def fetch_by_id(id:int, table:str) -> TableEntry:
 
     return table_entry
 
+#Fetches all tickets with a certain status (open, closed)
+#By default will return TableEntry objects of all entries found, otherwise itll go to the cap specified by max
+def fetch_by_status(status:str, table:str, max:int=0):
+    manager = SQLManager()
+    #Janky way of including column ID here
+    #I only did this because the initial DB adds id as a column whether or not its in the list
+    #Ain't stupid if it works and doesn't affect performance too bad I guess
+    cols = list(columns)
+    cols.insert(0, "id")
+    print(cols)
+    result = manager.select(cols, table, {"status" : status})
+    if max > 0:
+        result = result[:max]
+
+    entries = []
+    for res in result:
+        print(result)
+        temp = TableEntry(id=res[0], players=res[1], staff=res[2], message=res[3], status=status, table=table)
+        entries.append(temp)
+
+    return entries
+
+
 #Returns a player object given an interaction
 #Maybe move this function to a different file? Feels out of place
 def player_from_interaction(interaction:discord.Interaction) -> Player:
@@ -141,14 +165,15 @@ def player_from_interaction(interaction:discord.Interaction) -> Player:
     return Player(author.name, str(author.id), staff)
 
 if __name__ == "__main__":
-    m = SQLManager()
-    m.reset_to_default(debug_entry=True)
-    build_cfg("players", (("event", "varchar(255)"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")))
-    d = Table("players.ini")
-    d.push()
-    t = TableEntry("ya mama", "howbowda", "shabo'opadoo\\", "status", "players")
-    t.push()
-    print(fetch_by_id(2, "players"), "\n")
-    t = TableEntry("Updated ticket", "iushdiug", "godless program this is", "open","players", 2)
-    t.update()
-    print(fetch_by_id(2, "players"))
+    #m = SQLManager()
+    #m.reset_to_default(debug_entry=True)
+    #build_cfg("players", (("event", "varchar(255)"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")))
+    #d = Table("players.ini")
+    #d.push()
+    #t = TableEntry("ya mama", "howbowda", "shabo'opadoo\\", "status", "players")
+    #t.push()
+    #print(fetch_by_id(2, "players"), "\n")
+    #t = TableEntry("Updated ticket", "iushdiug", "godless program this is", "open","players", 2)
+    #t.update()
+    #print(fetch_by_id(2, "players"))
+    print(str(fetch_by_status("open", "players")[0]))
