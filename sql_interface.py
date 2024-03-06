@@ -75,42 +75,35 @@ class Table():
 
 #Global variable containing all column names
 #TODO: Get from SQL command directly
-columns = ["id", "involved_players", "involved_staff", "message", "status"]
+columns = ["involved_players", "involved_staff", "message", "status"]
 
 class TableEntry():
     #TODO: Dynamic Column names, maybe add origin server?
 
-    #Data handler class for a ticket. Contains everything a ticket should, and can automatically assign a new ticket ID if none is given.
-    #Unless the table entry already exists in the DB, DO NOT ASSIGN IT AN ID!
-    #When the table entry is pushed the system will give it a new ID.
-    #
-    def __init__(self, players:str, staff:str, message:str, status:str, table:str, id:int = -1):
+    #Data handler class for a ticket. Contains everything a ticket should.
+    #Leave ID as none if the ticket is not in the DB yet.
+    def __init__(self, players:str, staff:str, message:str, status:str, table:str, id:int=None):
         self._manager = SQLManager()
 
+        self.id = id
         self.involved_players = players
         self.involved_staff = staff
         self.message = message
         self.table = table
         self.status = status
-        self.id = id
+        
 
     def __str__(self):
         return f"Ticket ID: {str(self.id)}\nPlayers: [{self.involved_players}]\nStaff: [{self.involved_staff}]\nMessage: {self.message}\nStatus: {self.status}"
 
     #Adds the Table into the database table specified in the init
     def push(self):
-        #If we haven't given the entry an ID, query the server and give it the next available ID
-        if self.id == -1:
-            try:
-                self.id = int(self._manager.get_most_recent_entry(self.table)[0])+1
-            #If theres nothing in the database yet, just give it an ID of 1.
-            #Should never happen, but yknow.
-            except IndexError:
-                self.id = 1
-        else:
-            print(f"WARNING!!! Ticket with ID {self.id} already exists! Use update() instead!")
+        #If we gave the entry an ID, disable push.
+        if not self.id == None:
+            print(f"WARNING!!! Ticket with ID {self.id} (likely) already exists! Use update() instead!")
             return
-        values = [str(self.id), self.involved_players, self.involved_staff, self.message, self.status]
+        
+        values = [self.involved_players, self.involved_staff, self.message, self.status]
         try:
             self._manager.insert(self.table, columns, values)
         except mariadb.Error as e:
@@ -118,7 +111,8 @@ class TableEntry():
 
     #Updates an existing ticket in the database with the current TableEntry object.
     def update(self):
-        values = [str(self.id), self.involved_players, self.involved_staff, self.message]
+        #These values are in order depending on the SQL database columns
+        values = [self.involved_players, self.involved_staff, self.message, self.status]
         self._manager.update_row(self.table, columns, values, self.id)
 
 
@@ -131,13 +125,13 @@ def reset_to_default():
 def fetch_by_id(id:int, table:str) -> TableEntry:
     manager = SQLManager()
     result = manager.select(columns, table, {"id" : f"{str(id)}"})[0]
-    table_entry = TableEntry(players=result[1], staff=result[2], message=result[3], status=result[4], table=table, id=id)
+    table_entry = TableEntry(players=result[0], staff=result[1], message=result[2], status=result[3], table=table, id=id)
 
     return table_entry
 
 #Returns a player object given an interaction
 #Maybe move this function to a different file? Feels out of place
-def player_from_interaction(interaction:discord.interaction) -> Player:
+def player_from_interaction(interaction:discord.Interaction) -> Player:
     author = interaction.message.author
     staff = False
     staff_role = discord.utils.find(lambda r: r.name == STAFF_ROLE, interaction.message.guild.roles)
@@ -149,11 +143,12 @@ def player_from_interaction(interaction:discord.interaction) -> Player:
 if __name__ == "__main__":
     m = SQLManager()
     m.reset_to_default(debug_entry=True)
-    build_cfg("players", (("id", "int"), ("event", "varchar(255)"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")))
+    build_cfg("players", (("event", "varchar(255)"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")))
     d = Table("players.ini")
     d.push()
-    #t = TableEntry("ya mama", "howbowda", "shaboopadoo", "players")
-    #t.push()
-    #t = TableEntry("Updated ticket", "iushdiug", "god hell fuck", "players", 2)
-    #t.update()
+    t = TableEntry("ya mama", "howbowda", "shabo'opadoo\\", "status", "players")
+    t.push()
+    print(fetch_by_id(2, "players"), "\n")
+    t = TableEntry("Updated ticket", "iushdiug", "godless program this is", "open","players", 2)
+    t.update()
     print(fetch_by_id(2, "players"))

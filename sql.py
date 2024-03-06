@@ -50,7 +50,10 @@ class SQLManager:
     #Resets test database to a default state, containing a single fake ticket, if debug_entry = True.
     def reset_to_default(self, debug_entry=True):
         try:
-            data = [("id", "int"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")]
+            #ID is already assumed to be the first column of any table, for our use case
+            #NOTE: This IS NOT PULLED FROM A CONFIG FILE!!
+            #TODO: PULL IT FROM A CONFIG FILE!!!
+            data = [("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")]
             #Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
             cur = conn.cursor()
@@ -62,8 +65,8 @@ class SQLManager:
                 
             cur.execute("CREATE DATABASE test")
             self.create_table("players", data)
-            columns = ["id", "involved_players", "involved_staff", "message", "status"]
-            values = ["1", "list of playerids goes here", "list of staffids goes here", "debug ticket", "open"]
+            columns = ["involved_players", "involved_staff", "message", "status"]
+            values = ["list of playerids goes here", "list of staffids goes here", "debug ticket", "open"]
             if debug_entry:
                 self.insert("players", columns, values)
                 conn.commit()
@@ -214,7 +217,7 @@ class SQLManager:
             temp_tuple = (re.sub(regex, "", data[0]), re.sub(regex, "", data[1]))
             safe_table_data.append(temp_tuple)
         
-        table_data_string = "("
+        table_data_string = "(id SERIAL PRIMARY KEY, "
         index = 0
         for column in safe_table_data:
             if index < len(safe_table_data)-1:
@@ -268,10 +271,10 @@ class SQLManager:
         if type == "int":
             safe_value = f"{safe_value}"
         else:
-            safe_value = f"'{safe_value}'"
+            safe_value = f'"{safe_value}"'
 
 
-        sql = f"DELETE FROM {safe_table} WHERE {safe_variable}='{safe_value}'"
+        sql = f'DELETE FROM {safe_table} WHERE {safe_variable}="{safe_value}"'
         try:
            #Create a connection, insert the data, close the connection.
            conn = self.create_connection()
@@ -288,7 +291,6 @@ class SQLManager:
 
     def update_row(self, table:str, variables:list, values:list, id:int):
         #Untested, might behave strangely
-        #Assumes table uses IDs as primary key
 
         if len(variables) != len(values):
             raise Exception(f"Error in updating SQL row: Variables and Values contain different numbers of input.\nVariables:{variables}\nValues:{values}")
@@ -304,7 +306,7 @@ class SQLManager:
 
         sql = f"UPDATE {safe_table} SET"
         for i in range(1,len(safe_values)):
-            sql += f" {safe_variables[i]} = '{safe_values[i]}'"
+            sql += f' {safe_variables[i]} = "{safe_values[i]}"'
             if i < (len(safe_values)-1):
                 sql += ","
         sql += f" WHERE id = {id}"
@@ -347,4 +349,6 @@ class SQLManager:
 #Only runs when this py file is run by itself
 #This is basically just my debugging
 if __name__ == "__main__":
-    pass
+    s = SQLManager()
+    s.reset_to_default()
+    print(s.get_most_recent_entry("players"))
