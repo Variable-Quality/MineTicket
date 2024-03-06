@@ -2,13 +2,15 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import configparser
-import sql_interface
+import sql_interface as sql
 import random
 
 cfg = configparser.ConfigParser()
 cfg.read("config.ini")
 TOKEN = cfg["SECRET"]["token"]
 
+#TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
+TABLE_NAME = "players"
 class Bot(commands.Bot):
     def __init__(self, intents: discord.Intents, **kwargs):
          super().__init__(command_prefix="!", intents=intents, case_insensitive=True)
@@ -56,10 +58,15 @@ async def open_ticket(ctx: commands.Context):
     # Make a tickets "folder" using Categories
     tickets_category = discord.utils.get(ctx.guild.categories, name="Tickets")
     if not tickets_category:
-        tickets_category = await ctx.guild.create_category("Tickets")
+        try:
+            tickets_category = await ctx.guild.create_category("Tickets")
+        except Exception as e:
+            print(f"I tried to make the needed category but something went wrong!\n{e}")
+            return
+        print("WARNING!!! Ticket category not found! I've made one for you, but you may want to move it!")
 
-    # Switch to += 1 from last ticket
-    ticket_id = str(random.randint(100000, 999999))
+    #Polls database and gets the next ID
+    ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, True)) + 1
 
     ticket_channel_name = f"ticket-{ticket_id}"
     ticket_channel = await ctx.guild.create_text_channel(ticket_channel_name, category=tickets_category)

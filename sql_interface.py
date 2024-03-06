@@ -152,6 +152,12 @@ def fetch_by_status(status:str, table:str, max:int=0):
 
     return entries
 
+#Allows access to the function in sql.py of the same name
+def get_most_recent_entry(table, only_id=False):
+    manager = SQLManager()
+    entry = manager.get_most_recent_entry(table, only_id)
+    return entry
+
 
 #Returns a player object given an interaction
 #Maybe move this function to a different file? Feels out of place
