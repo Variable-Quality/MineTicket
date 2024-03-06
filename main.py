@@ -140,7 +140,7 @@ async def list_tickets(ctx: commands.Context):
 async def say(interaction: discord.Interaction, message:str):
     discordID = interaction.message.author.id
     uuid = interaction.message.id
-    ticket = sql_interface.TableEntry("create", uuid, discordID, message,"players")
+    ticket = sql.TableEntry("create", uuid, discordID, message,"players")
     ticket.push()
     await interaction.send(content="Ticket Created!")
 
@@ -148,7 +148,7 @@ async def say(interaction: discord.Interaction, message:str):
 @bot.hybrid_command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
 async def debug(interaction:discord.Interaction, text:str):
     if text == "reset all":
-        sql_interface.reset_to_default()
+        sql.reset_to_default()
         await interaction.send(content="Database Reset!")
 
 @bot.hybrid_command(name='say_fancy', description='Make the bot send message but nicer')
@@ -163,7 +163,7 @@ async def pull_ticket(interaction:discord.Interaction, ticket:str):
     except TypeError:
         await interaction.send(content="Incorrect input")
     try:
-        data = sql_interface.fetch_by_id(id, "players")
+        data = sql.fetch_by_id(id, "players")
     except IndexError:
         interaction.send(f"Invalid ticket number {id}")
     desc = f"Player-UUID: {data[2]}\nPlayer-DiscordID: {data[3]}\n\nDescription: {data[4]}"
@@ -174,11 +174,12 @@ async def pull_ticket(interaction:discord.Interaction, ticket:str):
     
     await interaction.send(embed=embed)
 
+#Redundant! Remove!
 @bot.hybrid_command(name="create_ticket", description="Creates a new ticket given the information.")
 async def create_ticket(interaction:discord.Interaction, event:str, message:str):
     discordID = interaction.message.author.id
     uuid = interaction.message.id
-    ticket = sql_interface.TableEntry(event, uuid, discordID, message,"players")
+    ticket = sql.TableEntry(event, uuid, discordID, message,"players")
     ticket.push()
     await interaction.send(content="Ticket Created!")
 
