@@ -151,10 +151,14 @@ async def say(interaction: discord.Interaction, message:str):
 async def debug(interaction:discord.Interaction, text:str):
     if text == "reset all":
         sql.reset_to_default()
-        await interaction.send(content="Database Reset!")
+        await interaction.response.send_message("Database Reset!")
 
     if text == "ui":
         await interaction.response.send_modal(bot_ui.ticket_ui())
+
+    if text == "recent":
+        entry = sql.get_most_recent_entry(TABLE_NAME)
+        await interaction.response.send_message(str(entry))
 
 @tree.command(name='say_fancy', description='Make the bot send message but nicer')
 async def say_fancy(interaction: discord.Interaction, text:str):

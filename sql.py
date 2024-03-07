@@ -176,7 +176,7 @@ class SQLManager:
 
         safe_values = []
         for value in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z ]", "", str(value)))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ,]", "", str(value)))
 
         columns_string = "("
         index = 0
