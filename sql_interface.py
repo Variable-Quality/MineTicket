@@ -7,13 +7,16 @@ import discord.utils
 #TODO:
 #Create function that adds example entry for testing
 
-#Creates a config file for interfacing with a Database
-#columns list should be a list of tuples, with the first item being the column name
-#Second tuple item being its datatype
-#Ex: columns=[("id", "int"), ("name", "varchar(255)")]
+
 
 STAFF_ROLE = "Staff"
 
+#Creates a config file for interfacing with a Database
+#columns list should be a list of tuples, with the first item being the column name
+#Second tuple item being its datatype
+#Ex: columns=[("name", "varchar(255)"), ("playerid", "bigint")]
+#Note: Program assumes the first column is the ID column, and sets it as the primary key automatically
+#So don't worry about including that
 def build_cfg(name:str, columns:list):
     config = ConfigParser()
     config["TABLE"] = {"name" : name}

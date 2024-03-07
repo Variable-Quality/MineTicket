@@ -4,6 +4,7 @@ from discord.ext import commands
 import configparser
 import sql_interface as sql
 import random
+import ui as bot_ui
 
 cfg = configparser.ConfigParser()
 cfg.read("config.ini")
@@ -11,15 +12,16 @@ TOKEN = cfg["SECRET"]["token"]
 
 #TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
 TABLE_NAME = "players"
-class Bot(commands.Bot):
-    def __init__(self, intents: discord.Intents, **kwargs):
-         super().__init__(command_prefix="!", intents=intents, case_insensitive=True)
+class Bot(discord.Client):
+    def __init__(self, intents):
+         super().__init__(intents=intents)
          # You can alternatively use ! as a command prefix instead of slash commands
          # Trying to fix as it sometimes does not work
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
-        await self.tree.sync()
+        #Bad, no, no sync on ready!
+        #await self.tree.sync()
 
     async def on_message(self, message):
         print(f"Message recieved in #{message.channel} from {message.author}: {message.content}")
@@ -31,15 +33,15 @@ class Bot(commands.Bot):
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = Bot(intents=intents)
-
+bot = Bot(intents)
+tree = app_commands.CommandTree(bot)
 #Command to sync commands
 #Aye dawg I heard you liked commands
 
 # This command isn't working, added sync back to startup for now
 # Todo: Fix this
 # Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
-@bot.command(name='sync', description='Syncs command list, use only when necessary')
+@tree.command(name='sync', description='Syncs command list, use only when necessary')
 async def sync(interaction:discord.Interaction):
     bot.tree.clear_commands(guild=interaction.guild)
     await bot.tree.sync()
@@ -50,7 +52,7 @@ async def sync(interaction:discord.Interaction):
 # async def command_name(interaction: discord.Interaction):
 #        [...] The magic goes here
 
-@bot.hybrid_command(name='open_ticket', description='Opens a ticket')
+@tree.command(name='open_ticket', description='Opens a ticket')
 async def open_ticket(ctx: commands.Context):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
@@ -77,7 +79,7 @@ async def open_ticket(ctx: commands.Context):
     # Reply to the user in the original channel
     await ctx.reply(content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!")
 
-@bot.command(name='claim_ticket', description='Claim a support ticket as a staff member')
+@tree.command(name='claim_ticket', description='Claim a support ticket as a staff member')
 async def claim_ticket(ctx: commands.Context):
     # Check if in ticket channel
     if ctx.channel.category and ctx.channel.category.name == "Tickets":
@@ -100,7 +102,7 @@ async def claim_ticket(ctx: commands.Context):
         # Non-ticket channel reply
         await ctx.reply("This command can only be used in a ticket channel.")
 
-@bot.command(name='close_ticket', description='Close the current ticket')
+@tree.command(name='close_ticket', description='Close the current ticket')
 async def close_ticket(ctx: commands.Context):
     # Check if in a ticket channel
     if ctx.channel.category and ctx.channel.category.name == "Tickets":
@@ -117,7 +119,7 @@ async def close_ticket(ctx: commands.Context):
         # Catch non-ticket channels
         await ctx.reply("This command can only be used in a ticket channel.")
 
-@bot.hybrid_command(name='list_tickets', description='List all open support tickets')
+@tree.command(name='list_tickets', description='List all open support tickets')
 async def list_tickets(ctx: commands.Context):
     # Grab live tickets from DB
     open_tickets = None # (Something like SELECT (["1", "2", "3"]))
@@ -136,7 +138,7 @@ async def list_tickets(ctx: commands.Context):
 
     await ctx.reply(embed=embed)
 
-@bot.hybrid_command(name='say', description='Make the bot send message')
+@tree.command(name='say', description='Make the bot send message')
 async def say(interaction: discord.Interaction, message:str):
     discordID = interaction.message.author.id
     uuid = interaction.message.id
@@ -145,18 +147,21 @@ async def say(interaction: discord.Interaction, message:str):
     await interaction.send(content="Ticket Created!")
 
 #Will be removed with final version
-@bot.hybrid_command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
+@tree.command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
 async def debug(interaction:discord.Interaction, text:str):
     if text == "reset all":
         sql.reset_to_default()
         await interaction.send(content="Database Reset!")
 
-@bot.hybrid_command(name='say_fancy', description='Make the bot send message but nicer')
+    if text == "ui":
+        await interaction.response.send_modal(bot_ui.ticket_ui())
+
+@tree.command(name='say_fancy', description='Make the bot send message but nicer')
 async def say_fancy(interaction: discord.Interaction, text:str):
      embed = discord.Embed(title="", description=text, color=discord.Color.purple())
      await interaction.send(embed=embed)
 
-@bot.hybrid_command(name='pull_ticket', description='Pulls a ticket from the database given an ID')
+@tree.command(name='pull_ticket', description='Pulls a ticket from the database given an ID')
 async def pull_ticket(interaction:discord.Interaction, ticket:str):
     try:
         id = int(ticket)
@@ -175,7 +180,7 @@ async def pull_ticket(interaction:discord.Interaction, ticket:str):
     await interaction.send(embed=embed)
 
 #Redundant! Remove!
-@bot.hybrid_command(name="create_ticket", description="Creates a new ticket given the information.")
+@tree.command(name="create_ticket", description="Creates a new ticket given the information.")
 async def create_ticket(interaction:discord.Interaction, event:str, message:str):
     discordID = interaction.message.author.id
     uuid = interaction.message.id
