@@ -70,6 +70,17 @@ async def open_ticket(ctx: commands.Context):
     #Polls database and gets the next ID
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, True)) + 1
 
+    # Grab player using function from sql_interface
+    player = sql.player_from_interaction(ctx)
+
+    # Create the ticket in sql
+    ticket = sql.TableEntry(players=player.discord_id, staff="",
+                            message=f"Ticket #{ticket_id} created by {ctx.author.mention}!",
+                            status="open", table=TABLE_NAME)
+    
+    # Push it!
+    ticket.push()
+
     ticket_channel_name = f"ticket-{ticket_id}"
     ticket_channel = await ctx.guild.create_text_channel(ticket_channel_name, category=tickets_category)
 
