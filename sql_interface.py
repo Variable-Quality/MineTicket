@@ -109,6 +109,15 @@ class TableEntry:
     def __str__(self):
         return f"Ticket ID: {str(self.id)}\nPlayers: [{self.involved_players}]\nStaff: [{self.involved_staff}]\nMessage: {self.message}\nStatus: {self.status}"
 
+    # Returns a more readable  string
+    def to_str(self):
+        pname = self.involved_players.split(",")[1]
+        try:
+            sname = self.involved_staff.split(",")[1]
+        except IndexError:
+            sname = ""
+        return f"Ticket ID: {str(self.id)}\nPlayers: [{pname}]\nStaff: [{sname}]\nMessage: {self.message}\nStatus: {self.status}"
+
     # Adds the Table into the database table specified in the init
     def push(self):
         # If we gave the entry an ID, disable push.
@@ -140,14 +149,17 @@ def reset_to_default():
 def fetch_by_id(id: int, table: str) -> TableEntry:
     manager = SQLManager()
     result = manager.select(columns, table, {"id": f"{str(id)}"})[0]
-    table_entry = TableEntry(
-        players=result[0],
-        staff=result[1],
-        message=result[2],
-        status=result[3],
-        table=table,
-        id=id,
-    )
+    try:
+        table_entry = TableEntry(
+            players=result[0],
+            staff=result[1],
+            message=result[2],
+            status=result[3],
+            table=table,
+            id=id,
+        )
+    except IndexError:
+        return None
 
     return table_entry
 
