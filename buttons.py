@@ -23,16 +23,16 @@ class Buttons(discord.ui.View):
     async def gray_button(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await interaction.response.send_modal(bot_ui.ticket_ui_create())
+        await interaction.response.send_modal(ui.ticket_ui_create())
 
     @discord.ui.button(label="claimButton", style=discord.ButtonStyle.gray)
     async def gray_button(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await interaction.response.send_modal(bot_ui.ticket_ui_claim())
+        await interaction.response.send_modal(ui.ticket_ui_claim())
 
     @discord.ui.button(label="closeButton", style=discord.ButtonStyle.gray)
     async def gray_button(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await interaction.response.send_modal(bot_ui.ticket_ui_close())
+        await interaction.response.send_modal(ui.ticket_ui_close())

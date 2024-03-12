@@ -1,9 +1,25 @@
-from discord.ui import Modal, TextInput
+from discord.ui import Modal, TextInput, Button
 from discord import Interaction, TextStyle, Embed, Color
 from datetime import datetime
 import sql_interface as sql
+from buttons import Buttons
+import discord
 
 TABLE_NAME = "players"
+
+
+class MyView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+
+        # Add a button to the view
+        self.add_item(
+            Button(
+                label="Click Me!",
+                style=discord.ButtonStyle.primary,
+                custom_id="button1",
+            )
+        )
 
 
 class ticket_ui_create(Modal, title="Create a new ticket"):
@@ -42,7 +58,9 @@ class ticket_ui_create(Modal, title="Create a new ticket"):
             str(player), "None", self.message.value, "open", TABLE_NAME
         )
         sql_entry.push()
-        await interaction.response.send_message(embed=embed)
+        view = MyView()
+        # await interaction.response.send_message(embed=embed)
+        await ctx.send(embed=embed, view=view)
 
 
 class ticket_ui_claim(Modal, title="Claim a ticket"):

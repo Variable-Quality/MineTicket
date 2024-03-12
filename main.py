@@ -17,10 +17,6 @@ TABLE_NAME = "players"
 WEBHOOK_CHANNEL = "bot_ingest"
 
 
-
-
-
-
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
@@ -33,13 +29,11 @@ class Bot(discord.Client):
         # await self.tree.sync()
 
     async def on_message(self, message):
-        print(f"Message recieved in #{message.channel} from {message.author}: {message.content}")
+        print(
+            f"Message recieved in #{message.channel} from {message.author}: {message.content}"
+        )
         if message.channel.name == WEBHOOK_CHANNEL:
             message_json = json.message(message)
-
-
-
-    
 
 
 intents = discord.Intents.default()
@@ -108,7 +102,9 @@ async def open_ticket(ctx: commands.Context):
     )
 
     # Send a message in the new channel
-    await ticket_channel.send(f"Ticket #{ticket_id} created by {ctx.author.mention}!")
+    await ticket_channel.send(
+        f"Ticket #{ticket_id} created by {ctx.author.mention}!", view=Buttons
+    )
 
     # Reply to the user in the original channel
     await ctx.reply(
@@ -230,9 +226,9 @@ async def debug(interaction: discord.Interaction, text: str):
     if text == "recent":
         entry = sql.get_most_recent_entry(TABLE_NAME)
         await interaction.response.send_message(str(entry))
-        
-    if text =="button":
-        
+
+    if text == "ui":
+        await interaction.response.send_modal(bot_ui.ticket_ui_create())
 
 
 @tree.command(name="say_fancy", description="Make the bot send message but nicer")
