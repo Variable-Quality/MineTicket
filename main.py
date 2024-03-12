@@ -90,28 +90,44 @@ async def open_ticket(ctx: commands.Context):
     # Reply to the user in the original channel
     await ctx.reply(content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!")
 
+#May wanna rename commands to be easier to type
+#Like just claim instead of claim_ticket
 @tree.command(name='claim_ticket', description='Claim a support ticket as a staff member')
-async def claim_ticket(ctx: commands.Context):
+async def claim_ticket(interaction: discord.Interaction):
     # Check if in ticket channel
-    if ctx.channel.category and ctx.channel.category.name == "Tickets":
+    if interaction.channel.category and interaction.channel.category.name == "Tickets":
         # Check role, ex staff
-        staff_role = discord.utils.get(ctx.guild.roles, name="Staff")
+        staff_role = discord.utils.get(interaction.guild.roles, name="Staff")
 
-        if staff_role and staff_role in ctx.author.roles:
+        if staff_role and staff_role in interaction.author.roles:
             # Grab ticket ID from the channel name
-            ticket_id = ctx.channel.name.split("-")[1]
+            try:
+                ticket_id = int(interaction.channel.name.split("-")[1])
+            except ValueError:
+                print(f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!")
+                interaction.message.reply("I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error.")
+                return
 
+            staff_member = sql.player_from_interaction(interaction)
             # Update database logic here
+            entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
             
-            await ctx.send(f"Ticket #{ticket_id} has been claimed by {ctx.author.mention}.")
+            if len(entry.involved_staff) > 0:
+                staff_name = entry.involved_staff.split(",")[0]
+                interaction.message.reply(f"Ticket #{ticket_id} has already been claimed by {staff_name}.")
+                return
+            
+            entry.involved_staff = str(staff_member)
+            entry.update()
+            await interaction.channel.send(f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.")
 
         else:
             # Non-staff reply
-            await ctx.reply("You need the 'Staff' role to claim a support ticket.")
+            await interaction.message.reply("You need the 'Staff' role to claim a support ticket.")
 
     else:
         # Non-ticket channel reply
-        await ctx.reply("This command can only be used in a ticket channel.")
+        await interaction.message.reply("This command can only be used in a ticket channel.")
 
 @tree.command(name='close_ticket', description='Close the current ticket')
 async def close_ticket(ctx: commands.Context):
