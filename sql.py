@@ -11,7 +11,6 @@ import re
 
 #TODO:
 #Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
-#Add DELETE functions other than just dropping the whole table
 
 class SQLManager:
 

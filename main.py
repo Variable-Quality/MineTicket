@@ -5,6 +5,7 @@ import configparser
 import sql_interface as sql
 import random
 import ui as bot_ui
+import json_parsing as json
 
 cfg = configparser.ConfigParser()
 cfg.read("config.ini")
@@ -12,6 +13,11 @@ TOKEN = cfg["SECRET"]["token"]
 
 #TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
 TABLE_NAME = "players"
+WEBHOOK_CHANNEL = "bot_ingest"
+
+
+
+
 class Bot(discord.Client):
     def __init__(self, intents):
          super().__init__(intents=intents)
@@ -25,6 +31,9 @@ class Bot(discord.Client):
 
     async def on_message(self, message):
         print(f"Message recieved in #{message.channel} from {message.author}: {message.content}")
+        if message.channel.name == WEBHOOK_CHANNEL:
+            message_json = json.message(message)
+
 
 
     
