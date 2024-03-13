@@ -62,15 +62,15 @@ async def sync(interaction: discord.Interaction):
 
 
 @tree.command(name="open_ticket", description="Opens a ticket")
-async def open_ticket(ctx: commands.Context):
+async def open_ticket(interaction: discord.Interaction):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
 
     # Make a tickets "folder" using Categories
-    tickets_category = discord.utils.get(ctx.guild.categories, name="Tickets")
+    tickets_category = discord.utils.get(interaction.guild.categories, name="Tickets")
     if not tickets_category:
         try:
-            tickets_category = await ctx.guild.create_category("Tickets")
+            tickets_category = await interaction.guild.create_category("Tickets")
         except Exception as e:
             print(f"I tried to make the needed category but something went wrong!\n{e}")
             return
@@ -82,13 +82,13 @@ async def open_ticket(ctx: commands.Context):
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, True)) + 1
 
     # Grab player using function from sql_interface
-    player = sql.player_from_interaction(ctx)
+    player = sql.player_from_interaction(interaction)
 
     # Create the ticket in sql
     ticket = sql.TableEntry(
         players=player.discord_id,
         staff="",
-        message=f"Ticket #{ticket_id} created by {ctx.author.mention}!",
+        message=f"Ticket #{ticket_id} created by {interaction.user.mention}!",
         status="open",
         table=TABLE_NAME,
     )
@@ -97,18 +97,20 @@ async def open_ticket(ctx: commands.Context):
     ticket.push()
 
     ticket_channel_name = f"ticket-{ticket_id}"
-    ticket_channel = await ctx.guild.create_text_channel(
+    ticket_channel = await interaction.guild.create_text_channel(
         ticket_channel_name, category=tickets_category
     )
 
     # Send a message in the new channel
     await ticket_channel.send(
-        f"Ticket #{ticket_id} created by {ctx.author.mention}!", view=Buttons
+        f"Ticket #{ticket_id} created by {interaction.user.mention}!"
     )
 
     # Reply to the user in the original channel
-    await ctx.reply(
-        content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!"
+    view = Buttons()
+    await interaction.channel.send(
+        content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!",
+        view=view,
     )
 
 
