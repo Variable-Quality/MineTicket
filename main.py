@@ -61,9 +61,9 @@ async def sync(interaction: discord.Interaction):
 #        [...] The magic goes here
 
 @tree.command(name='run_setup', description='Starts the setup process')
-async def run_setup(ctx: commands.Context):
+async def run_setup(interaction: discord.Interaction):
     # Check if the command is used in the correct channel
-    if ctx.channel.name == "tickets":
+    if interaction.channel.name == "create-a-ticket":
         # Create an embed message
         embed = discord.Embed(
             title="Want to start a ticket?",
@@ -75,23 +75,23 @@ async def run_setup(ctx: commands.Context):
         # Add button
         buttons.add_item(discord.ui.Button(style=discord.ButtonStyle.primary, label="Start A Ticket"))
         # Send message with button
-        message = await ctx.channel.send(embed=embed, view=buttons)
+        await interaction.channel.send(embed=embed, view=buttons)
 
     # Send confirmation
-    await ctx.send("Setup complete! The button is now available in the #tickets channel.")
+    await interaction.channel.send("Setup complete! The button is now available in the #tickets channel.")
 
 
 @tree.command(name="open_ticket", description="Opens a ticket")
-async def open_ticket(ctx: commands.Context):
+async def open_ticket(interaction: discord.Interaction):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
 
     # Make a tickets "folder" using Categories
     # I'm thinking we move this to setup so we only need to do this once.
-    tickets_category = discord.utils.get(ctx.guild.categories, name="Tickets")
+    tickets_category = discord.utils.get(interaction.guild.categories, name="Tickets")
     if not tickets_category:
         try:
-            tickets_category = await ctx.guild.create_category("Tickets")
+            tickets_category = await interaction.guild.create_category("Tickets")
         except Exception as e:
             print(f"I tried to make the needed category but something went wrong!\n{e}")
             return
@@ -103,13 +103,13 @@ async def open_ticket(ctx: commands.Context):
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, True)) + 1
 
     # Grab player using function from sql_interface
-    player = sql.player_from_interaction(ctx)
+    player = sql.player_from_interaction(interaction)
 
     # Create the ticket in sql
     ticket = sql.TableEntry(
         players=player.discord_id,
         staff="",
-        message=f"Ticket #{ticket_id} created by {ctx.author.mention}!",
+        message=f"Ticket #{ticket_id} created by {interaction.user.mention}!",
         status="open",
         table=TABLE_NAME,
     )
@@ -118,17 +118,17 @@ async def open_ticket(ctx: commands.Context):
     ticket.push()
 
     ticket_channel_name = f"ticket-{ticket_id}"
-    ticket_channel = await ctx.guild.create_text_channel(
+    ticket_channel = await interaction.guild.create_text_channel(
         ticket_channel_name, category=tickets_category
     )
 
     # Send a message in the new channel
     await ticket_channel.send(
-        f"Ticket #{ticket_id} created by {ctx.author.mention}!", view=Buttons
+        f"Ticket #{ticket_id} created by {interaction.user.mention}!", view=Buttons()
     )
 
     # Reply to the user in the original channel
-    await ctx.reply(
+    await interaction.channel.send(
         content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!"
     )
 
@@ -144,7 +144,7 @@ async def claim_ticket(interaction: discord.Interaction):
         # Check role, ex staff
         staff_role = discord.utils.get(interaction.guild.roles, name="Staff")
 
-        if staff_role and staff_role in interaction.author.roles:
+        if staff_role and staff_role in interaction.user.roles:
             # Grab ticket ID from the channel name
             try:
                 ticket_id = int(interaction.channel.name.split("-")[1])
@@ -225,15 +225,6 @@ async def list_tickets(ctx: commands.Context):
     await ctx.reply(embed=embed)
 
 
-@tree.command(name="say", description="Make the bot send message")
-async def say(interaction: discord.Interaction, message: str):
-    discordID = interaction.message.author.id
-    uuid = interaction.message.id
-    ticket = sql.TableEntry("create", uuid, discordID, message, "players")
-    ticket.push()
-    await interaction.send(content="Ticket Created!")
-
-
 # Will be removed with final version
 @tree.command(
     name="debug",
@@ -251,57 +242,24 @@ async def debug(interaction: discord.Interaction, text: str):
     if text == "ui":
         await interaction.response.send_modal(bot_ui.ticket_ui_create())
 
+    if text == "setup":
+        if interaction.channel.name == "create-a-ticket":
+            # Create an embed message
+            embed = discord.Embed(
+                title="Want to start a ticket?",
+                description="Click the button below to start a new ticket.",
+                color=discord.Color.blue()
+            )
+            # Create a Buttons instance via buttons.py
+            buttons = Buttons()
+            # Add button
+            buttons.add_item(discord.ui.Button(style=discord.ButtonStyle.primary, label="Start A Ticket"))
+            # Send message with button
+            await interaction.channel.send(embed=embed, view=buttons)
 
-@tree.command(name="say_fancy", description="Make the bot send message but nicer")
-async def say_fancy(interaction: discord.Interaction, text: str):
-    embed = discord.Embed(title="", description=text, color=discord.Color.purple())
-    await interaction.send(embed=embed)
-
-
-@tree.command(
-    name="pull_ticket", description="Pulls a ticket from the database given an ID"
-)
-async def pull_ticket(interaction: discord.Interaction, ticket: str):
-    try:
-        id = int(ticket)
-    except TypeError:
-        await interaction.send(content="Incorrect input")
-    try:
-        data = sql.fetch_by_id(id, "players")
-    except IndexError:
-        interaction.send(f"Invalid ticket number {id}")
-    desc = (
-        f"Player-UUID: {data[2]}\nPlayer-DiscordID: {data[3]}\n\nDescription: {data[4]}"
-    )
-
-    embed = discord.Embed(
-        title=f"Ticket ID #{id}", description=desc, color=discord.Color.green()
-    )
-
-    await interaction.send(embed=embed)
-
-
-# Redundant! Remove!
-@tree.command(
-    name="create_ticket", description="Creates a new ticket given the information."
-)
-async def create_ticket(interaction: discord.Interaction, event: str, message: str):
-    discordID = interaction.message.author.id
-    uuid = interaction.message.id
-    ticket = sql.TableEntry(event, uuid, discordID, message, "players")
-    ticket.push()
-    await interaction.send(content="Ticket Created!")
-
-
-# @bot.command(name='pull_ticket', description='Pulls a ticket from the database given an ID')
-# async def pull_ticket(interaction:discord.Interaction, text:str):
-#    print("AAAAAAAAAAAAAAAAAAAAAAA")
-#    try:
-#        id = int(text)
-#    except TypeError:
-#        await interaction.send(content="Incorrect input")
-#
-#    data = sql_interface.fetch_by_id(id, "players")
-#    await interaction.send(content=str(data))
+            # Send confirmation
+            await interaction.channel.send("Setup complete! The button is now available in the #tickets channel.")
+        else:
+            await interaction.channel.send("Whoopsie doo")
 
 bot.run(token=TOKEN)
