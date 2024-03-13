@@ -60,6 +60,26 @@ async def sync(interaction: discord.Interaction):
 # async def command_name(interaction: discord.Interaction):
 #        [...] The magic goes here
 
+@tree.command(name='run_setup', description='Starts the setup process')
+async def run_setup(ctx: commands.Context):
+    # Check if the command is used in the correct channel
+    if ctx.channel.name == "tickets":
+        # Create an embed message
+        embed = discord.Embed(
+            title="Want to start a ticket?",
+            description="Click the button below to start a new ticket.",
+            color=discord.Color.blue()
+        )
+        # Create a Buttons instance via buttons.py
+        buttons = Buttons()
+        # Add button
+        buttons.add_item(discord.ui.Button(style=discord.ButtonStyle.primary, label="Start A Ticket"))
+        # Send message with button
+        message = await ctx.channel.send(embed=embed, view=buttons)
+
+    # Send confirmation
+    await ctx.send("Setup complete! The button is now available in the #tickets channel.")
+
 
 @tree.command(name="open_ticket", description="Opens a ticket")
 async def open_ticket(ctx: commands.Context):
@@ -67,6 +87,7 @@ async def open_ticket(ctx: commands.Context):
     # Need to figure a new way to do this as this was a temp solve
 
     # Make a tickets "folder" using Categories
+    # I'm thinking we move this to setup so we only need to do this once.
     tickets_category = discord.utils.get(ctx.guild.categories, name="Tickets")
     if not tickets_category:
         try:
