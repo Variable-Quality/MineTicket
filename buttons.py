@@ -20,19 +20,30 @@ class Buttons(discord.ui.View):
     """
 
     @discord.ui.button(label="openButton", style=discord.ButtonStyle.gray)
-    async def gray_button(
+    async def openButton(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await interaction.response.send_modal(ui.ticket_ui_create())
+        await interaction.channel.send_modal(ui.ticket_ui_create())
 
-    @discord.ui.button(label="claimButton", style=discord.ButtonStyle.gray)
-    async def gray_button(
+    @discord.ui.button(label="claimButton", style=discord.ButtonStyle.green)
+    async def claimButton(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
         await interaction.response.send_modal(ui.ticket_ui_claim())
 
-    @discord.ui.button(label="closeButton", style=discord.ButtonStyle.gray)
-    async def gray_button(
+    @discord.ui.button(label="closeButton", style=discord.ButtonStyle.red)
+    async def closeButton(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await interaction.response.send_modal(ui.ticket_ui_close())
+        staff = sql.player_from_interaction(interaction)
+        sql_entry = sql.TableEntry(
+            str(players),
+            str(staff),
+            staff_member,
+            self.status.value,
+            "claim",
+            TABLE_NAME,
+            int(ticket_num.value),
+        )
+        sql_entry.update()
+        await interaction.response.send_message(content="Ticket closed")
