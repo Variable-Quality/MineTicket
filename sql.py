@@ -12,7 +12,8 @@ import re
 # TODO:
 # Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
 # Add DELETE functions other than just dropping the whole table
-
+#TODO:
+#Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
 
 class SQLManager:
 
@@ -183,7 +184,7 @@ class SQLManager:
 
         safe_values = []
         for value in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z ]", "", str(value)))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ,]", "", str(value)))
 
         columns_string = "("
         index = 0
@@ -305,7 +306,7 @@ class SQLManager:
         
         safe_values = []
         for item in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z ]", "", item))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ,]", "", item))
 
         sql = f"UPDATE {safe_table} SET"
         for i in range(1,len(safe_values)):
@@ -328,9 +329,9 @@ class SQLManager:
             if conn:
                 conn.close()
 
-    # Fetches the entry with the highest ID, presumably the most recently entered ticket
-    # Returns a list containing each item in the row
-    def get_most_recent_entry(self, table: str) -> list:
+    #Fetches the entry with the highest ID, presumably the most recently entered ticket
+    #Returns a list containing each item in the row
+    def get_most_recent_entry(self, table:str, only_id=False) -> list:
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
         sql = f"SELECT * FROM {safe_table} ORDER BY id DESC LIMIT 1"
@@ -346,35 +347,15 @@ class SQLManager:
         finally:
             if conn:
                 conn.close()
-
-        return result[0]
+        if not only_id:
+            return result[0]
+        else:
+            return result[0][0]
 
 
 # Only runs when this py file is run by itself
 # This is basically just my debugging
 if __name__ == "__main__":
     s = SQLManager()
-    s.drop_table("players")  # May change to int?
-    # data = [("id", "int"), ("event", "varchar(255)"), ("uuid", "varchar(255)"), ("discordID", "varchar(255)"), ("message", "varchar(255)")]
-    data = [
-        ("id", "int"),
-        ("event", "varchar(255)"),
-        ("uuid", "varchar(255)"),
-        ("discordID", "varchar(255)"),
-        ("message", "varchar(255)"),
-        ("players", "varchar(255)"),
-    ]
-    s.create_table("players", data)
-
-    columns = ["id", "event", "uuid", "discordID", "message", "players"]
-    values = [
-        "1",
-        "create",
-        "uuid goes here",
-        "discord ID goes here",
-        "debug ticket",
-        "all users on ticket",
-    ]
-
-    s.insert("players", columns, values)
-    print(s.select("*", "players"))
+    s.reset_to_default()
+    print(s.get_most_recent_entry("players", True))

@@ -2,75 +2,60 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import configparser
-import sql_interface
+import sql_interface as sql
 import random
+import ui as bot_ui
+from buttons import Buttons
+import json_parsing as json
 
 cfg = configparser.ConfigParser()
 cfg.read("config.ini")
 TOKEN = cfg["SECRET"]["token"]
 
+# TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
+TABLE_NAME = "players"
+WEBHOOK_CHANNEL = "bot_ingest"
+STAFF_ROLE = "Staff"
 
-class Bot(commands.Bot):
-    def __init__(self, intents: discord.Intents, **kwargs):
-        super().__init__(command_prefix="!", intents=intents, case_insensitive=True)
+
+class Bot(discord.Client):
+    def __init__(self, intents):
+        super().__init__(intents=intents)
         # You can alternatively use ! as a command prefix instead of slash commands
         # Trying to fix as it sometimes does not work
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
-        await self.tree.sync()
+        #Since the sync command doesnt wanna work, fuck it
+        await tree.sync()
 
     async def on_message(self, message):
         print(
             f"Message recieved in #{message.channel} from {message.author}: {message.content}"
         )
-
-
-# main source - https://gist.github.com/lykn/bac99b06d45ff8eed34c2220d86b6bf4
-class Buttons(discord.ui.View):
-    def __init__(self, *, timeout=180):
-        super().__init__(timeout=timeout)
-
-    """
-    1 - claim ticket
-    2 - close ticket
-    3 - add user to ticket
-    
-    if userRole in config.rolesList # ['1', '2']
-    """
-
-    @discord.ui.button(label="Button", style=discord.ButtonStyle.gray)
-    async def gray_button(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await interaction.response.edit_message(
-            content=f"This is an edited button response!"
-        )
-
-    @discord.ui.button(label="Button1", style=discord.ButtonStyle.gray)
-    async def gray_button(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await interaction.response.edit_message(
-            content=f"This is an edited button response!"
-        )
+        #Weird issue, ephemeral messages throw an AttributeError here
+        #Copy paste: 
+        #AttributeError: 'DMChannel' object has no attribute 'name'
+        if message.channel.name == WEBHOOK_CHANNEL:
+            message_json = json.message(message)
 
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
-bot = Bot(intents=intents)
-
+bot = Bot(intents)
+tree = app_commands.CommandTree(bot)
 # Command to sync commands
 # Aye dawg I heard you liked commands
 
 # This command isn't working, added sync back to startup for now
 # Todo: Fix this
 # Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
-@bot.command(name='sync', description='Syncs command list, use only when necessary')
-async def sync(interaction:discord.Interaction):
-    bot.tree.clear_commands(guild=interaction.guild)
-    await bot.tree.sync()
+@tree.command(name="sync", description="Syncs command list, use only when necessary")
+async def sync(interaction: discord.Interaction):
+    tree.clear_commands(guild=interaction.guild)
+    await tree.sync()
     # Testing out a new way of responding
     interaction.response.send_message("Tree Sync'd.")
 
@@ -79,73 +64,177 @@ async def sync(interaction:discord.Interaction):
 # async def command_name(interaction: discord.Interaction):
 #        [...] The magic goes here
 
+@tree.command(name="run_setup", description="Starts the setup process")
+async def run_setup(interaction: discord.Interaction):
+    # Check if the command is used in the correct channel
+    embed = discord.Embed(
+        title="Want to start a ticket?",
+        description="Click the button below to start a new ticket.",
+        color=discord.Color.blue(),
+    )
 
-@bot.hybrid_command(name="open_ticket", description="Opens a ticket")
-async def open_ticket(ctx: commands.Context):
+    ticket_category = await interaction.guild.create_category("Tickets")
+    ticket_channel = await interaction.guild.create_text_channel("create-a-ticket", category=ticket_category)
+    # Create a Buttons instance via buttons.py
+    buttons = Buttons()
+    # Add button
+    buttons.add_item(
+        discord.ui.Button(style=discord.ButtonStyle.primary, label="Start A Ticket")
+    )
+    # Send message with button
+    await ticket_channel.send(embed=embed, view=buttons)
+
+    # Send confirmation
+    await interaction.response.send_message(
+        "Setup complete! The button is now available in the #tickets channel."
+    )
+
+
+@tree.command(name="open_ticket", description="Opens a ticket")
+async def open_ticket(interaction: discord.Interaction):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
 
     # Make a tickets "folder" using Categories
-    tickets_category = discord.utils.get(ctx.guild.categories, name="Tickets")
-    if not tickets_category:
-        tickets_category = await ctx.guild.create_category("Tickets")
+    # I'm thinking we move this to setup so we only need to do this once.
+    tickets_category = discord.utils.get(interaction.guild.categories, name="Tickets")
 
-    # Switch to += 1 from last ticket
-    ticket_id = str(random.randint(100000, 999999))
+    # Polls database and gets the next ID
+    ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, True)) + 1
+
+    # Grab player using function from sql_interface
+    player = sql.player_from_interaction(interaction)
+
+    # Create the ticket in sql
+    ticket = sql.TableEntry(
+        players=str(player),
+        staff="",
+        message=f"Ticket #{ticket_id} created by {interaction.user.mention}!",
+        status="open",
+        table=TABLE_NAME,
+    )
+
+    # Push it!
+    ticket.push()
+
+    # TODO:
+    # Modify these overwrites when new player is added
+    overwrites = {
+        interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+        interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
 
     ticket_channel_name = f"ticket-{ticket_id}"
-    ticket_channel = await ctx.guild.create_text_channel(ticket_channel_name, category=tickets_category)
+    ticket_channel = await interaction.guild.create_text_channel(
+        ticket_channel_name, category=tickets_category, overwrites=overwrites
+    )
 
     # Send a message in the new channel
-    await ticket_channel.send(f"Ticket #{ticket_id} created by {ctx.author.mention}!")
+    await ticket_channel.send(
+        f"Ticket #{ticket_id} created by {interaction.user.mention}!"
+    )
 
     # Reply to the user in the original channel
-    await ctx.reply(content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!")
+    await interaction.response.send_message(
+        content=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!", ephemeral=True
+    )
 
-@bot.command(name='claim_ticket', description='Claim a support ticket as a staff member')
-async def claim_ticket(ctx: commands.Context):
+
+# May wanna rename commands to be easier to type
+# Like just claim instead of claim_ticket
+@tree.command(
+    name="claim_ticket", description="Claim a support ticket as a staff member"
+)
+async def claim_ticket(interaction: discord.Interaction):
     # Check if in ticket channel
-    if ctx.channel.category and ctx.channel.category.name == "Tickets":
+    if interaction.channel.category and interaction.channel.category.name == "Tickets":
         # Check role, ex staff
-        staff_role = discord.utils.get(ctx.guild.roles, name="Staff")
+        staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE)
 
-        if staff_role and staff_role in ctx.author.roles:
+        if staff_role and staff_role in interaction.user.roles:
             # Grab ticket ID from the channel name
-            ticket_id = ctx.channel.name.split("-")[1]
+            try:
+                ticket_id = int(interaction.channel.name.split("-")[1])
+            except ValueError:
+                print(
+                    f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
+                )
+                interaction.response.send_message(
+                    "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error."
+                )
+                return
 
+            staff_member = sql.player_from_interaction(interaction)
             # Update database logic here
-            
-            await ctx.send(f"Ticket #{ticket_id} has been claimed by {ctx.author.mention}.")
+            entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+
+            if len(entry.involved_staff) > 0:
+                staff_name = entry.involved_staff.split(",")[0]
+                interaction.response.send_message(
+                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.", ephemeral=True
+                )
+                return
+
+            entry.involved_staff = str(staff_member)
+            entry.status = "claimed"
+            entry.update()
+            await interaction.response.send_message(
+                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}."
+            )
 
         else:
             # Non-staff reply
-            await ctx.reply("You need the 'Staff' role to claim a support ticket.")
+            await interaction.response.send_message(
+                f"You need the {STAFF_ROLE} role to claim a support ticket.", ephemeral=True
+            )
 
     else:
         # Non-ticket channel reply
-        await ctx.reply("This command can only be used in a ticket channel.")
+        await interaction.response.send_message(
+            "This command can only be used in a ticket channel.", ephemeral=True
+        )
 
-@bot.command(name='close_ticket', description='Close the current ticket')
-async def close_ticket(ctx: commands.Context):
+
+@tree.command(name="close_ticket", description="Close the current ticket")
+async def close_ticket(interaction: discord.Interaction):
     # Check if in a ticket channel
-    if ctx.channel.category and ctx.channel.category.name == "Tickets":
+    if interaction.channel.category and interaction.channel.category.name == "Tickets":
         # Grab ticket ID from the channel name
-        ticket_id = ctx.channel.name.split("-")[1]
-
+        try:
+            ticket_id = int(interaction.channel.name.split("-")[1])
+        except ValueError:
+            print(
+                f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
+            )
+            interaction.response.send_message(
+                "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error."
+            )
+            return
         # Archive command here
 
-        await ctx.channel.delete()
-        # Alert mod in DMs
-        await ctx.author.send(f" #{ticket_id} has been closed.")
+        #await interaction.channel.delete()
+        # Notify channel is closed, dont delete yet
+        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+        entry.status = "closed"
+        
+        curr_overwrites = interaction.channel.overwrites
+        keys = list(curr_overwrites.keys())
+        for key in keys[1:]:
+            print(f"MEMBER ID: {key.id}")
+            member = bot.get_user(int(key.id))
+            await interaction.channel.set_permissions(member, send_messages=False, read_messages=True)
+        entry.update()
+        await interaction.response.send_message(f" Ticket #{ticket_id} has been closed.")
 
     else:
         # Catch non-ticket channels
-        await ctx.reply("This command can only be used in a ticket channel.")
+        await interaction.message.reply("This command can only be used in a ticket channel.")
 
-@bot.hybrid_command(name='list_tickets', description='List all open support tickets')
+#Uselsss function
+@tree.command(name="list_tickets", description="List all open support tickets")
 async def list_tickets(ctx: commands.Context):
     # Grab live tickets from DB
-    open_tickets = None # (Something like SELECT (["1", "2", "3"]))
+    open_tickets = None  # (Something like SELECT (["1", "2", "3"]))
 
     if not open_tickets:
         await ctx.reply("No open tickets found.")
@@ -161,115 +250,48 @@ async def list_tickets(ctx: commands.Context):
 
     await ctx.reply(embed=embed)
 
-@bot.hybrid_command(name="say", description="Make the bot send message")
-async def say(interaction: discord.Interaction, message: str):
-    discordID = interaction.message.author.id
-    uuid = interaction.message.id
-    ticket = sql_interface.TableEntry("create", uuid, discordID, message, "players")
-    ticket.push()
-    await interaction.send(content="Ticket Created!")
-
-#Will be removed with final version
-@bot.hybrid_command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
-async def debug(interaction:discord.Interaction, text:str):
+# Will be removed with final version
+@tree.command(
+    name="debug",
+    description="Debug command for doing whatever you need it to do because caching is a cunt",
+)
+async def debug(interaction: discord.Interaction, text: str):
     if text == "reset all":
-        sql_interface.reset_to_default()
-        await interaction.send(content="Database Reset!")
+        sql.reset_to_default()
+        await interaction.response.send_message("Database Reset!")
 
-    if text == "buttonTest":
-        await interaction.send("This message has buttons!", view=Buttons())
+    if text == "recent":
+        entry = sql.get_most_recent_entry(TABLE_NAME)
+        await interaction.response.send_message(str(entry))
 
+    if text == "ui":
+        await interaction.response.send_modal(bot_ui.ticket_ui_create())
 
-@bot.hybrid_command(name="say_fancy", description="Make the bot send message but nicer")
-async def say_fancy(interaction: discord.Interaction, text: str):
-    embed = discord.Embed(title="", description=text, color=discord.Color.purple())
-    await interaction.send(embed=embed)
+    if text == "setup":
+        if interaction.channel.name == "create-a-ticket":
+            # Create an embed message
+            embed = discord.Embed(
+                title="Want to start a ticket?",
+                description="Click the button below to start a new ticket.",
+                color=discord.Color.blue(),
+            )
+            # Create a Buttons instance via buttons.py
+            buttons = Buttons()
+            # Add button
+            buttons.add_item(
+                discord.ui.Button(
+                    style=discord.ButtonStyle.primary, label="Start A Ticket"
+                )
+            )
+            # Send message with button
+            await interaction.channel.send(embed=embed, view=buttons)
 
-
-@bot.hybrid_command(
-    name="pull_ticket", description="Pulls a ticket from the database given an ID"
-)
-async def pull_ticket(ctx, interaction, ticket: str):
-    try:
-        id = int(ticket)
-    except TypeError:
-        await interaction.send(content="Incorrect input")
-    try:
-        data = sql_interface.fetch_by_id(id, "players")
-    except IndexError:
-        interaction.send(f"Invalid ticket number {id}")
-    desc = (
-        f"Player-UUID: {data[2]}\nPlayer-DiscordID: {data[3]}\n\nDescription: {data[4]}"
-    )
-
-    embed = discord.Embed(
-        title=f"Ticket ID #{id}", description=desc, color=discord.Color.green()
-    )
-    """
-    1 - claim ticket
-    2 - close ticket
-    3 - add user to ticket
-    
-    if userRole in config.rolesList # ['1', '2']
-    """
-
-    def check(msg):
-        return (
-            msg.author == ctx.author
-            and msg.channel == ctx.channel
-            and msg.content.lower() in ["y", "n"]
-            # this part does not work yet, like at all!
-        )
-        # how the hell do we check if the users to be added exist within the discord server?
-
-    @discord.ui.button(label="claim", style=discord.ButtonStyle.gray)
-    async def gray_button(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await interaction.send(content="Ticket Created!")
-
-    @discord.ui.button(label="close", style=discord.ButtonStyle.gray)
-    async def gray_button(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await interaction.send(content="Ticket Closed!!")
-
-    @discord.ui.button(label="addUser", style=discord.ButtonStyle.gray)
-    async def gray_button(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await interaction.send(content="Please enter user ID: ")
-        # how the hell do we check if the users to be added exist within the discord server?
-        msg = await bot.wait_for("message", check=check)
-        # This part is where we need to search if the users added even exist on the server!
-        if msg.content.lower() == "y":
-            await ctx.send(f"You added {msg} to the ticket")
+            # Send confirmation
+            await interaction.channel.send(
+                "Setup complete! The button is now available in the #tickets channel."
+            )
         else:
-            await ctx.send("That user doesn't exist!")
+            await interaction.channel.send("Whoopsie doo")
 
-    await interaction.send(embed=embed)
-
-
-@bot.hybrid_command(
-    name="create_ticket", description="Creates a new ticket given the information."
-)
-async def create_ticket(interaction: discord.Interaction, event: str, message: str):
-    discordID = interaction.message.author.id
-    uuid = interaction.message.id
-    ticket = sql_interface.TableEntry(event, uuid, discordID, message, "players")
-    ticket.push()
-    await interaction.send(content="Ticket Created!")
-
-
-# @bot.command(name='pull_ticket', description='Pulls a ticket from the database given an ID')
-# async def pull_ticket(interaction:discord.Interaction, text:str):
-#    print("AAAAAAAAAAAAAAAAAAAAAAA")
-#    try:
-#        id = int(text)
-#    except TypeError:
-#        await interaction.send(content="Incorrect input")
-#
-#    data = sql_interface.fetch_by_id(id, "players")
-#    await interaction.send(content=str(data))
 
 bot.run(token=TOKEN)
