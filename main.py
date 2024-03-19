@@ -49,7 +49,6 @@ tree = app_commands.CommandTree(bot)
 # Command to sync commands
 # Aye dawg I heard you liked commands
 
-
 # This command isn't working, added sync back to startup for now
 # Todo: Fix this
 # Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
@@ -64,7 +63,6 @@ async def sync(interaction: discord.Interaction):
 # @bot.hybrid_command(name='name of the command', description='description of the command')
 # async def command_name(interaction: discord.Interaction):
 #        [...] The magic goes here
-
 
 @tree.command(name="run_setup", description="Starts the setup process")
 async def run_setup(interaction: discord.Interaction):
@@ -252,7 +250,6 @@ async def list_tickets(ctx: commands.Context):
 
     await ctx.reply(embed=embed)
 
-
 # Will be removed with final version
 @tree.command(
     name="debug",
@@ -296,8 +293,5 @@ async def debug(interaction: discord.Interaction, text: str):
         else:
             await interaction.channel.send("Whoopsie doo")
 
-
-    if text == "close":
-        await close_ticket(interaction)
 
 bot.run(token=TOKEN)
