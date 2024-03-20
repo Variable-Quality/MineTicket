@@ -50,14 +50,14 @@ class SQLManager:
 
         return conn
     # Resets test database to a default state, containing a single fake ticket.
-    def reset_to_default(self):
+    def reset_to_default(self, debug_entry=False):
         try:
             data = [
-                ("id", "int"),
+                ("id", "SERIAL PRIMARY KEY"),
                 ("event", "varchar(255)"),
                 ("uuid", "varchar(255)"),
                 ("discordID", "varchar(255)"),
-                ("message", "varchar(255)"),
+                ("message", "TEXT"),
             ]
             # Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
