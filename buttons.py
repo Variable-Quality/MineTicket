@@ -5,6 +5,10 @@ import sql_interface as sql
 import random
 import ui
 
+TABLE_NAME = "players"
+WEBHOOK_CHANNEL = "bot_ingest"
+STAFF_ROLE = "Staff"
+
 
 # main source - https://gist.github.com/lykn/bac99b06d45ff8eed34c2220d86b6bf4
 class Buttons(discord.ui.View):
@@ -47,3 +51,219 @@ class Buttons(discord.ui.View):
         )
         sql_entry.update()
         await interaction.response.send_message(content="Ticket closed")
+
+
+"""
+What are the button states?
+1. Open
+    Claim
+2. Claimed
+    Close
+    Add user
+3. Closed
+    Re open (open)
+    Chat is unusable
+
+"""
+
+
+class ButtonOpen(discord.ui.View):
+    """
+    What does this button class do?
+    This is attatched to messages where the ticket is in the state `Open`
+
+    What does this add?
+    Claim button
+    """
+
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+
+    @discord.ui.button(label="claimButton", style=discord.ButtonStyle.green)
+    async def claimButton(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        # https://stackoverflow.com/questions/74426018/attributeerror-button-object-has-no-attribute-response
+        # We had a few attribute errors and this might be the right fix.
+
+        ticket_channel = interaction.channel
+        ticket_id = int(ticket_channel.name.split("-")[1])
+
+        if ticket_channel.category and ticket_channel.category.name == "Tickets":
+            staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE)
+            if staff_role and staff_role in interaction.user.roles:
+                staff_member = sql.player_from_interaction(interaction)
+                entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+
+                if len(entry.involved_staff) > 0:
+                    staff_data = entry.involved_staff.split(",")
+                    staff_id = int(staff_data[1])
+                    staff_member = interaction.guild.get_member(staff_id)
+                    if staff_member:
+                        embed = discord.Embed(
+                            title="Ticket already claimed",
+                            description=f"Ticket #{ticket_id} has already been claimed by {staff_member.mention}.",
+                            color=discord.Color.blue(),
+                        )
+                    else:
+                        embed = discord.Embed(
+                            title="Ticket already claimed",
+                            description=f"Ticket #{ticket_id} has already been claimed by a staff member.",
+                            color=discord.Color.blue(),
+                        )
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                else:
+                    entry.involved_staff = str(staff_member)
+                    entry.status = "claimed"
+                    entry.update()
+                    # buttons get attatched to THIS one
+                    embed = discord.Embed(
+                        title="Ticket claimed!",
+                        description=f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
+                        color=discord.Color.blue(),
+                    )
+                    await interaction.response.send_message(
+                        embed=embed, view=ButtonClaimed()
+                    )
+            else:
+                embed = discord.Embed(
+                    title="Unable to claim ticket",
+                    description=f"You need the {STAFF_ROLE} role to claim a support ticket.",
+                    color=discord.Color.blue(),
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            embed = discord.Embed(
+                title="Command not usable.",
+                description="This command can only be used in a ticket channel.",
+                color=discord.Color.blue(),
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class ButtonClaimed(discord.ui.View):
+    """
+    What does this button class do?
+    This is attatched to messages where the ticket is in the state `Claim`
+
+    What does this add?
+    Close button
+    Add staff button
+    """
+
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
+    async def close_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        # Logic for closing the ticket
+        ticket_channel = interaction.channel
+        ticket_id = int(ticket_channel.name.split("-")[1])
+
+        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+        # Check if the user is the claiming staff member or an added staff member
+
+        staff_data = entry.involved_staff.split(",")
+        staff_id = staff_data[1]
+        if str(interaction.user.id) != staff_id and str(
+            interaction.user.id
+        ) not in entry.involved_players.split(","):
+            embed = discord.Embed(
+                title="Unauthorized",
+                description=f"You do not have permission to close this ticket.",
+                color=discord.Color.red(),
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        entry.status = "closed"
+        entry.update()
+
+        curr_overwrites = interaction.channel.overwrites
+        keys = list(curr_overwrites.keys())
+        for key in keys[1:]:
+            member = interaction.guild.get_member(int(key.id))
+            await interaction.channel.set_permissions(
+                member, send_messages=False, read_messages=True
+            )
+
+        embed = discord.Embed(
+            title="Ticket Closed",
+            description=f"Ticket #{ticket_id} has been closed.",
+            color=discord.Color.blue(),
+        )
+        await interaction.response.send_message(embed=embed, view=ButtonClosed())
+
+    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green)
+    async def add_user_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        ticket_channel = interaction.channel
+        ticket_id = int(ticket_channel.name.split("-")[1])
+
+        def check(m):
+            return m.author == interaction.user and m.channel == interaction.channel
+
+        await interaction.response.send_message(
+            "Please enter the user's ID or mention:", ephemeral=True
+        )
+        try:
+            msg = await interaction.client.wait_for(
+                "message", check=check, timeout=60.0
+            )
+            await msg.delete()
+        except asyncio.TimeoutError:
+            await interaction.followup.send(
+                "Timed out waiting for user input.", ephemeral=True
+            )
+            return
+
+        user_id = msg.content.strip("<@!>")
+        try:
+            user = await interaction.guild.fetch_member(int(user_id))
+        except discord.NotFound:
+            await interaction.followup.send(
+                "Invalid user ID or mention.", ephemeral=True
+            )
+            return
+
+        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+        entry.involved_players += f",{str(user)}"
+        entry.update()
+
+        await ticket_channel.set_permissions(
+            user, read_messages=True, send_messages=True
+        )
+        await interaction.followup.send(f"{user.mention} has been added to the ticket.")
+
+
+class ButtonClosed(discord.ui.View):
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+
+    @discord.ui.button(label="Reopen Ticket", style=discord.ButtonStyle.green)
+    async def reopen_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        ticket_channel = interaction.channel
+        ticket_id = int(ticket_channel.name.split("-")[1])
+
+        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+        entry.status = "open"
+        entry.update()
+
+        curr_overwrites = interaction.channel.overwrites
+        keys = list(curr_overwrites.keys())
+        for key in keys[1:]:
+            member = interaction.guild.get_member(int(key.id))
+            await interaction.channel.set_permissions(
+                member, send_messages=True, read_messages=True
+            )
+
+        embed = discord.Embed(
+            title="Ticket Reopened",
+            description=f"Ticket #{ticket_id} has been reopened.",
+            color=discord.Color.blue(),
+        )
+        await interaction.response.send_message(embed=embed, view=ButtonClaimed())
