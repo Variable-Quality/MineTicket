@@ -204,12 +204,7 @@ def get_most_recent_entry(table, only_id=False):
 # Returns a player object given an interaction
 # Maybe move this function to a different file? Feels out of place
 def player_from_interaction(interaction: discord.Interaction) -> Player:
-    try:
-        author = interaction.message.author
-    except AttributeError:
-        # Some interactions have a message, others dont (I think)
-        # TODO: review this
-        author = interaction.user
+    author = interaction.user
 
     staff = False
     staff_role = discord.utils.find(
