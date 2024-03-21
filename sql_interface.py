@@ -1,43 +1,11 @@
 from sql import SQLManager
 from os import path
-from configparser import ConfigParser
+from configmanager import database_config_manager as db_cfg
 import mariadb
 import discord.utils
 
-# TODO:
-# Create function that adds example entry for testing
-
 
 STAFF_ROLE = "Staff"
-
-
-# Creates a config file for interfacing with a Database
-# columns list should be a list of tuples, with the first item being the column name
-# Second tuple item being its datatype
-# Ex: columns=[("name", "varchar(255)"), ("playerid", "bigint")]
-# Note: Program assumes the first column is the ID column, and sets it as the primary key automatically
-# So don't worry about including that
-def build_cfg(name: str, columns: list):
-    config = ConfigParser()
-    config["TABLE"] = {"name": name}
-    columns_str = ""
-    datatypes_str = ""
-    for column in columns:
-
-        columns_str += f"{column[0]},"
-        datatypes_str += f"{column[1]},"
-
-    config["TABLE"]["columns"] = columns_str[: len(columns_str) - 1]
-    config["TABLE"]["datatypes"] = datatypes_str[: len(datatypes_str) - 1]
-
-    filename = f"{name}.ini"
-    if path.isfile(filename):
-        with open(filename, "w") as f:
-            config.write(f)
-    else:
-        with open(filename, "x") as f:
-            config.write(f)
-
 
 # Helper class for containerizing players
 class Player:
@@ -53,18 +21,18 @@ class Player:
 
 # Table object
 # Not too useful now, maybe make the primary way of interacting with tables?
-# Ask everyone else
 class Table:
 
-    def __init__(self, config: str):
-        cfg = ConfigParser()
+    def __init__(self, config:str=None):
+        cfg = db_cfg(filename=config)
         cfg.read(config)
-        self.name = cfg["TABLE"]["name"]
+        self.name = cfg["DATABASE"]["table"]
 
-        columns_list = cfg["TABLE"]["columns"].split(",")
-        self.columns = columns_list
+        self.columns = list(cfg["TABLE"].keys())
 
-        datatypes_list = cfg["TABLE"]["datatypes"].split(",")
+        datatypes_list = []
+        for key in self.columns:
+            datatypes_list.append(cfg["TABLE"][key])
         self.datatypes = datatypes_list
 
     # Pushes table to DB.

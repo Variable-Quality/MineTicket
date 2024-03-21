@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 import os.path
 
-#path to config file
+#path to config directory
 CONFIG_LOCATION = "config"
 
 #Really basic config file manager, mostly made it to have it
@@ -30,7 +30,7 @@ class database_config_manager():
 
     # If creating a new config, pass in a dict to data, and information such as database name, table name, and login info into the info dict.
     # Skip the ID field, that one is assumed.
-    # Ex: data=[{"involved_player_discord": "varchar(255)"), ("involved_player_minecraft": "varchar(255)"), ...}]
+    # Ex: data={"involved_player_discord": "varchar(255)", "involved_player_minecraft": "varchar(255)", ...}
     # Ex: info = {"database": "test", "table": "tickets", "username": "root", "password": "toor", ...}
     #
     # If loading existing config, pass in the filename (extension included)
@@ -63,14 +63,14 @@ class database_config_manager():
                                 "host": "localhost",
                                 "port": "3306"}
         
-        self.cfg["TABLE"] = [{"id": "SERIAL PRIMARY KEY",
+        self.cfg["TABLE"] = {"id": "SERIAL PRIMARY KEY",
                               #involved_players_discord is a TEXT object just in case there are a metric ton of players on one ticket
                               "involved_players_discord": "TEXT",
                               "involved_players_minecraft": "varchar(256)",
                               "involved_staff_discord": "varchar(256)",
                               "involved_staff_minecraft": "varchar(256)",
                               "status": "varchar(16)",
-                              "message": "TEXT"}]
+                              "message": "TEXT"}
         
         self.filename = f"{CONFIG_LOCATION}/default.ini"
 
@@ -82,6 +82,12 @@ class database_config_manager():
 
         with open(f"{self.filename}", writemode) as f:
             self.cfg.write(f)
+
+    def read(self, filename:str=None):
+        if filename:
+            self.filename = filename
+        with open(self.filename, "r") as f:
+            self.cfg.read(f)
 
 
 

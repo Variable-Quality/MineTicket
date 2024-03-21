@@ -2,7 +2,7 @@ import mariadb
 import sys
 import configparser
 import re
-
+from configmanager import database_config_manager as db_cfg
 # https://mariadb-corporation.github.io/mariadb-connector-python/cursor.html
 # Important API doc
 
@@ -17,10 +17,9 @@ import re
 
 class SQLManager:
 
-    def __init__(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("config.ini")
-        self.USER = cfg["DATABASE"]["user"]
+    def __init__(self, cfg:str=None):
+        cfg = db_cfg(filename=cfg)
+        self.USER = cfg["DATABASE"]["username"]
         self.PASSWORD = cfg["DATABASE"]["password"]
         self.HOST = cfg["DATABASE"]["host"]
         port = cfg["DATABASE"]["port"]
@@ -52,28 +51,27 @@ class SQLManager:
     # Resets test database to a default state, containing a single fake ticket.
     def reset_to_default(self, debug_entry=False):
         try:
-            data = [
-                ("id", "SERIAL PRIMARY KEY"),
-                ("event", "varchar(255)"),
-                ("uuid", "varchar(255)"),
-                ("discordID", "varchar(255)"),
-                ("message", "TEXT"),
-            ]
+            cfg = db_cfg()
+            data = cfg["TABLE"]
             # Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
             cur = conn.cursor()
             try:
-                cur.execute("DROP DATABASE test")
+                cur.execute(f"DROP DATABASE {cfg["DATABASE"]["database"]}")
                 conn.commit()
             except mariadb.Error as e:
                 print("Database test does not exist! Continuing on anyway...")
                 
-            cur.execute("CREATE DATABASE test")
-            self.create_table("players", data)
-            columns = ["involved_players", "involved_staff", "message", "status"]
-            values = ["list of playerids goes here", "list of staffids goes here", "debug ticket", "open"]
+            cur.execute(f"CREATE DATABASE {cfg["DATABASE"]["database"]}")
+            self.create_table(cfg["DATABASE"]["table"], data)
+
+            columns = []
+            values = []
+            for key in cfg["TABLE"].keys():
+                columns.append(key)
+                values.append(cfg["TABLE"][key])
             if debug_entry:
-                self.insert("players", columns, values)
+                self.insert(cfg["DATABASE"]["table"], columns, values)
                 conn.commit()
         except mariadb.Error as e:
             print(f"Database error in reset_to_default statement: {e}")
@@ -215,14 +213,15 @@ class SQLManager:
 
     # Makes an SQL table.
     # Table Data is an array of string tuples, with the first value being the column name, and the second value being the data it holds.
-    def create_table(self, table: str, table_data: list):
+    # TODO: Rework to use dict instead
+    def create_table(self, table: str, table_data:dict):
         # Sanitize like it's mid 2020
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
         safe_table_data = []
-        for data in table_data:
+        for key in table_data.keys():
             regex = r"[^0-9A-Za-z()]"
-            temp_tuple = (re.sub(regex, "", data[0]), re.sub(regex, "", data[1]))
+            temp_tuple = (re.sub(regex, "", key), re.sub(regex, "", table_data[key]))
             safe_table_data.append(temp_tuple)
         table_data_string = "(id SERIAL PRIMARY KEY, "
         index = 0
