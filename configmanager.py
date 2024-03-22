@@ -56,6 +56,7 @@ class database_config_manager():
             self.default_config()
 
     def default_config(self):
+        # Table name is stored in the DATABASE section since its much easier to use the keys of the TABLE section to define column names
         self.cfg["DATABASE"] = {"database": "test", 
                                 "table": "tickets", 
                                 "username": "root", 

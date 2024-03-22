@@ -58,28 +58,35 @@ class TableEntry:
     # Leave ID as none if the ticket is not in the DB yet.
     def __init__(
         self,
-        players: str,
-        staff: str,
-        message: str,
-        status: str,
-        table: str,
-        id: int = None,
+        table_info:dict=None,
+        config:str=None,
     ):
         self._manager = SQLManager()
+        if not table_info and not config:
+            raise Exception("ERROR: TableEntry must contain either a dict or config file with information on the database table.")
+        if not table_info:
+            cfg = db_cfg(config)
+            self.table_dict = dict(cfg["TABLE"])
+        else:
+            self.table_dict = dict(table_info)
 
-        self.id = id
-        self.involved_players = players
-        self.involved_staff = staff
-        self.message = message
-        self.table = table
-        self.status = status
 
     def __str__(self):
-        return f"Ticket ID: {str(self.id)}\nPlayers: [{self.involved_players}]\nStaff: [{self.involved_staff}]\nMessage: {self.message}\nStatus: {self.status}"
+        ret_str = ""
+        for key in self.table_dict.keys():
+            ret_str += f"{key}: {self.table_dict[key]}\n"
+        return ret_str
 
     # Returns a more readable  string
+    # This method uses some hardcoded database columns, I can't figure out a smart way around that
     def to_str(self):
-        pname = self.involved_players.split(",")[1]
+        pdata_discord = self.cfg["TABLE"]["involved_players_discord"]
+        if len(pdata_discord) > 0:
+            names = []
+            players = pdata_discord.split("|")
+            for player in players:
+                names.append(player.split(',')[0])
+        pname = self.cfg[""].split(",")[1]
         try:
             sname = self.involved_staff.split(",")[1]
         except IndexError:
@@ -134,15 +141,11 @@ def fetch_by_id(id: int, table: str) -> TableEntry:
 
 # Fetches all tickets with a certain status (open, closed)
 # By default will return TableEntry objects of all entries found, otherwise itll go to the cap specified by max
-def fetch_by_status(status: str, table: str, max: int = 0):
+def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
     manager = SQLManager()
-    # Janky way of including column ID here
-    # I only did this because the initial DB adds id as a column whether or not its in the list
-    # Ain't stupid if it works and doesn't affect performance too bad I guess
-    cols = list(columns)
-    cols.insert(0, "id")
-    print(cols)
-    result = manager.select(cols, table, {"status": status})
+    config = db_cfg(filename=cfg)
+    cols = list(config["TABLE"].keys())
+    result = manager.select(cols, config["DATABASE"]["table"], {"status": status})
     if max > 0:
         result = result[:max]
 

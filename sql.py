@@ -49,9 +49,9 @@ class SQLManager:
 
         return conn
     # Resets test database to a default state, containing a single fake ticket.
-    def reset_to_default(self, debug_entry=False):
+    def reset_to_default(self, debug_entry=False, config:str=None):
         try:
-            cfg = db_cfg()
+            cfg = db_cfg(filename=config)
             data = cfg["TABLE"]
             # Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
@@ -182,7 +182,7 @@ class SQLManager:
 
         safe_values = []
         for value in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z ,]", "", str(value)))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ,|]", "", str(value)))
 
         columns_string = "("
         index = 0
