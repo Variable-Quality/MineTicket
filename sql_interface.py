@@ -1,6 +1,6 @@
 from sql import SQLManager
 from os import path
-from configmanager import database_config_manager as db_cfg
+from configmanager import database_config_manager as db_cfm
 import mariadb
 import discord.utils
 
@@ -17,6 +17,9 @@ class Player:
 
     def __str__(self):
         return f"{self.name},{self.discord_id},{str(self.staff)}"
+    
+    def __int__(self):
+        return int(self.discord_id)
 
 
 # Table object
@@ -24,15 +27,14 @@ class Player:
 class Table:
 
     def __init__(self, config:str=None):
-        cfg = db_cfg(filename=config)
-        cfg.read(config)
-        self.name = cfg["DATABASE"]["table"]
+        cfm = db_cfm(filename=config)
+        self.name = cfm.cfg["DATABASE"]["table"]
 
-        self.columns = list(cfg["TABLE"].keys())
+        self.columns = list(cfm.cfg["TABLE"].keys())
 
         datatypes_list = []
         for key in self.columns:
-            datatypes_list.append(cfg["TABLE"][key])
+            datatypes_list.append(cfm.cfg["TABLE"][key])
         self.datatypes = datatypes_list
 
     # Pushes table to DB.
@@ -46,11 +48,6 @@ class Table:
         manager.create_table(self.name, data)
 
 
-# Global variable containing all column names
-# TODO: Get from SQL command directly (or cfg)
-columns = ["involved_players", "involved_staff", "message", "status"]
-
-
 class TableEntry:
     # TODO: Dynamic Column names, maybe add origin server?
 
@@ -62,13 +59,13 @@ class TableEntry:
         config:str=None,
     ):
         self._manager = SQLManager()
-        if not table_info and not config:
-            raise Exception("ERROR: TableEntry must contain either a dict or config file with information on the database table.")
+        self.cfm = db_cfm(filename=config)
         if not table_info:
-            cfg = db_cfg(config)
-            self.table_dict = dict(cfg["TABLE"])
+            self.table_dict = self.cfm.cfg["TABLE"]
         else:
-            self.table_dict = dict(table_info)
+            self.table_dict = table_info
+
+        self.columns = list(self.table_dict.keys())[1:]
 
 
     def __str__(self):
@@ -80,31 +77,35 @@ class TableEntry:
     # Returns a more readable  string
     # This method uses some hardcoded database columns, I can't figure out a smart way around that
     def to_str(self):
-        pdata_discord = self.cfg["TABLE"]["involved_players_discord"]
+        pdata_discord = self.table_dict["involved_players_discord"]
         if len(pdata_discord) > 0:
             names = []
             players = pdata_discord.split("|")
             for player in players:
                 names.append(player.split(',')[0])
-        pname = self.cfg[""].split(",")[1]
         try:
             sname = self.involved_staff.split(",")[1]
         except IndexError:
             sname = ""
-        return f"Ticket ID: {str(self.id)}\nPlayers: [{pname}]\nStaff: [{sname}]\nMessage: {self.message}\nStatus: {self.status}"
+        return f"Ticket ID: {self.table_dict['id']}\nPlayers: [{players}]\nStaff: [{sname}]\nMessage: {self.table_dict['message']}\nStatus: {self.table_dict['status']}"
 
     # Adds the Table into the database table specified in the init
     def push(self):
-        # If we gave the entry an ID, disable push.
-        if not self.id == None:
+        # If the entry exists with that ID, warn and return.
+        table_entry = fetch_by_id(int(self.table_dict["id"]))
+        if table_entry != None:
             print(
-                f"WARNING!!! Ticket with ID {self.id} (likely) already exists! Use update() instead!"
+                f"WARNING!!! Ticket with ID {self.table_dict['id']} (likely) already exists! Use update() instead!"
             )
             return
 
-        values = [self.involved_players, self.involved_staff, self.message, self.status]
+        values = []
+        for key in self.table_dict.keys():
+            values.append(self.table_dict[key])
+        #Ignore the ID 
+        values = values[1:]
         try:
-            self._manager.insert(self.table, columns, values)
+            self._manager.insert(self.cfm.cfg["DATABASE"]["table"], self.columns, values)
         except mariadb.Error as e:
             print(f"Error pushing ticket with ID {self.id} \n{e}")
 
@@ -112,53 +113,69 @@ class TableEntry:
     def update(self):
         # These values are in order depending on the SQL database columns
         values = [self.involved_players, self.involved_staff, self.message, self.status]
-        self._manager.update_row(self.table, columns, values, self.id)
+        self._manager.update_row(self.table, self.columns, values, self.id)
 
 
 # Allows access to the SQLManager reset_to_default command
-def reset_to_default():
+def reset_to_default(debug_entry=False, config:str=None):
     manager = SQLManager()
-    manager.reset_to_default()
+    manager.reset_to_default(debug_entry, config)
 
 
-def fetch_by_id(id: int, table: str) -> TableEntry:
+def fetch_by_id(id: int, config:str=None) -> TableEntry:
+    cfm = db_cfm(filename=config)
+    table = cfm.cfg["DATABASE"]["table"]
+    columns = list(cfm.cfg["TABLE"].keys())
     manager = SQLManager()
-    result = manager.select(columns, table, {"id": f"{str(id)}"})[0]
+
+    
     try:
-        table_entry = TableEntry(
-            players=result[0],
-            staff=result[1],
-            message=result[2],
-            status=result[3],
-            table=table,
-            id=id,
-        )
+        res = manager.select(columns, table, {"id": f"{str(id)}"})[0]
+        # print(result)
     except IndexError:
         return None
 
-    return table_entry
+    table_dict = {
+      "id": res[0], 
+      "involved_players_discord": res[1], 
+      "involved_players_minecraft": res[2],
+      "involved_staff_discord": res[3],
+      "involved_staff_minecraft": res[4],
+      "status": res[5],
+      "message": res[6]
+    }
+
+    return TableEntry(table_info=table_dict)
 
 
 # Fetches all tickets with a certain status (open, closed)
 # By default will return TableEntry objects of all entries found, otherwise itll go to the cap specified by max
 def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
     manager = SQLManager()
-    config = db_cfg(filename=cfg)
-    cols = list(config["TABLE"].keys())
-    result = manager.select(cols, config["DATABASE"]["table"], {"status": status})
+    cfm = db_cfm(filename=cfg)
+    table = cfm.cfg["DATABASE"]["table"]
+    cols = list(cfm.cfg["TABLE"].keys())
+
+    result = manager.select(cols, table, {"status": status})
     if max > 0:
         result = result[:max]
 
     entries = []
     for res in result:
-        print(result)
+        # TODO: Reformat this to be made programatically
+        # ATM its dependent on the default config
+        table_dict = {
+                      "id": res[0], 
+                      "involved_players_discord": res[1], 
+                      "involved_players_minecraft": res[2],
+                      "involved_staff_discord": res[3],
+                      "involved_staff_minecraft": res[4],
+                      "status": res[5],
+                      "message": res[6]
+                    }
+        # print(result)
         temp = TableEntry(
-            id=res[0],
-            players=res[1],
-            staff=res[2],
-            message=res[3],
-            status=status,
-            table=table,
+            table_info=table_dict
         )
         entries.append(temp)
 
@@ -185,17 +202,19 @@ def player_from_interaction(interaction: discord.Interaction) -> Player:
 
     return Player(author.name, str(author.id), staff)
 
-
 if __name__ == "__main__":
-    # m = SQLManager()
-    # m.reset_to_default(debug_entry=True)
-    # build_cfg("players", (("event", "varchar(255)"), ("involved_players", "varchar(255)"), ("involved_staff", "varchar(255)"), ("message", "varchar(255)"), ("status", "varchar(255)")))
-    # d = Table("players.ini")
-    # d.push()
-    # t = TableEntry("ya mama", "howbowda", "shabo'opadoo\\", "status", "players")
-    # t.push()
-    # print(fetch_by_id(2, "players"), "\n")
-    # t = TableEntry("Updated ticket", "iushdiug", "godless program this is", "open","players", 2)
-    # t.update()
-    # print(fetch_by_id(2, "players"))
-    print(str(fetch_by_status("open", "players")[0]))
+    t = TableEntry()
+    reset_to_default(debug_entry=True)
+    print(t.table_dict)
+    print(fetch_by_id(1))
+    dict = {"id": 2, 
+            "involved_players_discord": "9871623089476", 
+            "involved_players_minecraft": "sdd987f9a879-9-3218h494",
+            "involved_staff_discord": "973424576456",
+            "involved_staff_minecraft": "asiudas98sdf98-238urw9efh98-asd97f80",
+            "status": "open",
+            "message": "big joey slapnuts"}
+    te = TableEntry(table_info=dict)
+    te.push()
+    print(fetch_by_id(2))
+    print(te.table_dict)

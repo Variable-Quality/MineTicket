@@ -45,7 +45,7 @@ class database_config_manager():
             data["id"] = "SERIAL PRIMARY KEY"
             self.cfg["DATABASE"] = info
             self.cfg["TABLE"] = data
-            self.filename = f"{CONFIG_LOCATION}/{info["database"]}.ini"
+            self.filename = f"{CONFIG_LOCATION}/{info['database']}.ini"
 
         elif filename:
             with open(self.filename, "r") as f:
@@ -65,9 +65,9 @@ class database_config_manager():
                                 "port": "3306"}
         
         self.cfg["TABLE"] = {"id": "SERIAL PRIMARY KEY",
-                              #involved_players_discord is a TEXT object just in case there are a metric ton of players on one ticket
+                              #involved_players is a TEXT object just in case there are a metric ton of players on one ticket
                               "involved_players_discord": "TEXT",
-                              "involved_players_minecraft": "varchar(256)",
+                              "involved_players_minecraft": "TEXT",
                               "involved_staff_discord": "varchar(256)",
                               "involved_staff_minecraft": "varchar(256)",
                               "status": "varchar(16)",

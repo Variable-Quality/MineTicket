@@ -2,7 +2,7 @@ import mariadb
 import sys
 import configparser
 import re
-from configmanager import database_config_manager as db_cfg
+from configmanager import database_config_manager as db_cfm
 # https://mariadb-corporation.github.io/mariadb-connector-python/cursor.html
 # Important API doc
 
@@ -18,11 +18,11 @@ from configmanager import database_config_manager as db_cfg
 class SQLManager:
 
     def __init__(self, cfg:str=None):
-        cfg = db_cfg(filename=cfg)
-        self.USER = cfg["DATABASE"]["username"]
-        self.PASSWORD = cfg["DATABASE"]["password"]
-        self.HOST = cfg["DATABASE"]["host"]
-        port = cfg["DATABASE"]["port"]
+        cfm = db_cfm(filename=cfg)
+        self.USER = cfm.cfg["DATABASE"]["username"]
+        self.PASSWORD = cfm.cfg["DATABASE"]["password"]
+        self.HOST = cfm.cfg["DATABASE"]["host"]
+        port = cfm.cfg["DATABASE"]["port"]
         try:
             self.PORT = int(port)
         except TypeError:
@@ -31,7 +31,7 @@ class SQLManager:
 
         # Note: Database name is loaded from config file
         # May want to add option to be passed into constructor
-        self.DATABASE = cfg["DATABASE"]["database"]
+        self.DATABASE = cfm.cfg["DATABASE"]["database"]
 
     def create_connection(self):
         try:
@@ -51,27 +51,29 @@ class SQLManager:
     # Resets test database to a default state, containing a single fake ticket.
     def reset_to_default(self, debug_entry=False, config:str=None):
         try:
-            cfg = db_cfg(filename=config)
-            data = cfg["TABLE"]
+            cfm = db_cfm(filename=config)
+            data = cfm.cfg["TABLE"]
             # Create a connection, fetch the cursor/data, close the connection and return results
             conn = self.create_connection()
             cur = conn.cursor()
             try:
-                cur.execute(f"DROP DATABASE {cfg["DATABASE"]["database"]}")
+                cur.execute(f"DROP DATABASE {cfm.cfg['DATABASE']['database']}")
+                print("Database dropped!")
                 conn.commit()
             except mariadb.Error as e:
                 print("Database test does not exist! Continuing on anyway...")
                 
-            cur.execute(f"CREATE DATABASE {cfg["DATABASE"]["database"]}")
-            self.create_table(cfg["DATABASE"]["table"], data)
+            cur.execute(f"CREATE DATABASE {cfm.cfg['DATABASE']['database']}")
+            self.create_table(table=cfm.cfg["DATABASE"]["table"], table_data=data)
+            print(f"Database {cfm.cfg['DATABASE']['database']} created!\nTable {cfm.cfg['DATABASE']['table']} created!")
 
             columns = []
             values = []
-            for key in cfg["TABLE"].keys():
+            for key in list(cfm.cfg["TABLE"].keys())[1:]:
                 columns.append(key)
-                values.append(cfg["TABLE"][key])
+                values.append(cfm.cfg["TABLE"][key])
             if debug_entry:
-                self.insert(cfg["DATABASE"]["table"], columns, values)
+                self.insert(cfm.cfg["DATABASE"]["table"], columns, values)
                 conn.commit()
         except mariadb.Error as e:
             print(f"Database error in reset_to_default statement: {e}")
@@ -110,7 +112,7 @@ class SQLManager:
         safe_columns_string = ""
         index = 0
         for column in columns:
-            sanitized = re.sub(r"[^0-9A-Za-z*]", "", column)
+            sanitized = re.sub(r"[^0-9A-Za-z*_]", "", column)
             safe_columns.append(sanitized)
             if index < len(columns) - 1:
                 safe_columns_string = safe_columns_string + sanitized + ", "
@@ -178,7 +180,7 @@ class SQLManager:
 
         safe_columns = []
         for column in columns:
-            safe_columns.append(re.sub(r"[^0-9A-Za-z]", "", column))
+            safe_columns.append(re.sub(r"[^0-9A-Za-z_]", "", column))
 
         safe_values = []
         for value in values:
@@ -213,19 +215,20 @@ class SQLManager:
 
     # Makes an SQL table.
     # Table Data is an array of string tuples, with the first value being the column name, and the second value being the data it holds.
-    # TODO: Rework to use dict instead
     def create_table(self, table: str, table_data:dict):
         # Sanitize like it's mid 2020
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
         safe_table_data = []
         for key in table_data.keys():
-            regex = r"[^0-9A-Za-z()]"
+            regex = r"[^0-9A-Za-z()_]"
             temp_tuple = (re.sub(regex, "", key), re.sub(regex, "", table_data[key]))
             safe_table_data.append(temp_tuple)
         table_data_string = "(id SERIAL PRIMARY KEY, "
-        index = 0
-        for column in safe_table_data:
+        index = 1
+        for column in safe_table_data[1:]:
+            print(index)
+            print(len(safe_table_data))
             if index < len(safe_table_data) - 1:
                 table_data_string += f"{column[0]} {column[1]}, "
             else:
@@ -236,7 +239,7 @@ class SQLManager:
         #CREATE TABLE players (Name varchar(255), IngameID int, ticketID int)
         sql = f"CREATE TABLE IF NOT EXISTS {safe_table} {table_data_string}"
         #DEBUGGING
-        #print(f"\n{sql}\n")
+        print(f"\n{sql}\n")
         try:
             # Create a connection, insert the data, close the connection.
             conn = self.create_connection()
