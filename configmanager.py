@@ -49,7 +49,7 @@ class database_config_manager():
 
         elif filename:
             with open(self.filename, "r") as f:
-                self.cfg.read(self.filename)
+                self.cfg.read(f)
 
         # If all 3 are none, use the premade config file.       
         else:
@@ -57,6 +57,10 @@ class database_config_manager():
 
     def default_config(self):
         # Table name is stored in the DATABASE section since its much easier to use the keys of the TABLE section to define column names
+        token_loader = ConfigParser()
+        # The token should be included in the config file
+        # We don't hardcode it so it doesn't show up in the git changelog
+        token_loader.read(f"{CONFIG_LOCATION}/token.ini")
         self.cfg["DATABASE"] = {"database": "test", 
                                 "table": "tickets", 
                                 "username": "root", 
@@ -72,7 +76,13 @@ class database_config_manager():
                               "involved_staff_minecraft": "varchar(256)",
                               "status": "varchar(16)",
                               "message": "TEXT"}
-        
+
+
+        self.cfg["BOT"] = {"token": token_loader["SECRET"]["token"],
+                           "staff_role": "Staff",
+                           "ingest_channel": "bot_ingest"}
+
+
         self.filename = f"{CONFIG_LOCATION}/default.ini"
 
     def write(self):

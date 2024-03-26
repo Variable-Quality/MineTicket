@@ -62,8 +62,11 @@ class TableEntry:
         self.cfm = db_cfm(filename=config)
         if not table_info:
             self.table_dict = self.cfm.cfg["TABLE"]
+
         else:
             self.table_dict = table_info
+        for key in self.table_dict.keys():
+            self.__dict__[key] = self.table_dict[key]
 
         self.columns = list(self.table_dict.keys())[1:]
 

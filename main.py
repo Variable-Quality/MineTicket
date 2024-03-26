@@ -7,15 +7,14 @@ import random
 import ui as bot_ui
 from buttons import Buttons
 import json_parsing as json
+from configmanager import database_config_manager as db_cfm
 
-cfg = configparser.ConfigParser()
-cfg.read("config.ini")
-TOKEN = cfg["SECRET"]["token"]
-
-# TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
-TABLE_NAME = "players"
-WEBHOOK_CHANNEL = "bot_ingest"
-STAFF_ROLE = "Staff"
+CONFIG_FILENAME = None
+cfm = db_cfm(filename=CONFIG_FILENAME)
+TOKEN = cfm.cfg["BOT"]["token"]
+TABLE_NAME = cfm.cfg["DATABASE"]["table"]
+WEBHOOK_CHANNEL = cfm.cfg["BOT"]["ingest_channel"]
+STAFF_ROLE = cfm.cfg["BOT"]["staff_role"]
 
 
 class Bot(discord.Client):
