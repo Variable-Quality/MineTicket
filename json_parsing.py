@@ -23,8 +23,12 @@ class ParseJSON():
         if not channel:
             print(f"Channel '{channel_name}' not found in category '{category_name}'")
             return
-        # wait i got tired here what am i doing
-        # help
+        
+        # ok, now read any new message in intake
+        @client.event
+        async def on_message(message):
+            if message.channel == channel:
+                await self.parse_json_message(message)
 
     # ok time to read JSON
     async def parse_json_message(self, message):
@@ -45,18 +49,57 @@ class ParseJSON():
         # The event does one of the three Cs
         event = json_data.get("event")
         if event == "create":
-            return
+            await self.create_event(json_data)
         elif event == "claim":
-            return
+            await self.claim_event(json_data)
         elif event == "close":
-            return
+            await self.close_event(json_data)
      
     # ok now do magic with the events   
     async def create_event(self, json_data):
-        pass
+        player_id = json_data["discord-id"]
+        # player_uuid = json_data["player-uuid"] <-- this is that minecraft UUID, can we take that in?
+        message = json_data["message"]
+
+        # Make a ticket from this info
+        # We gotta makee sure to make player_uuid makes it in next round
+
+        # discord.Object since it needs an .Interaction
+        player = sql.player_from_interaction(discord.Object(id=int(player_id)))
+        entry = sql.TableEntry(
+            players=str(player),
+            staff="",
+            message=message,
+            status="open",
+            table="players"
+        )
+        entry.push()
+        # grab the ID
+        ticket_id = sql.get_most_recent_entry("players", only_id=True)
+        # add a message here to confirm?
+
 
     async def claim_event(self, json_data):
-        pass
+        ticket_id = json_data["id"]
+        staff_id = json_data["discord-id"]
+
+        entry = sql.fetch_by_id(ticket_id, "players")
+        if entry:
+            staff_member = sql.player_from_interaction(discord.Object(id=int(staff_id)))
+            entry.involved_staff = str(staff_member)
+            entry.status = "claimed"
+            entry.update()
+            # add a messsage to confirm?
 
     async def close_event(self, json_data):
-        pass
+        ticket_id = json_data["id"]
+        player_id = json_data["discord-id"]
+        message = json_data["message"]
+    
+        # Close the ticket with the player's information
+        entry = sql.fetch_by_id(ticket_id, "players")
+        if entry:
+            entry.status = "closed"
+            entry.message = message
+            entry.update()
+            # add a message here to confirm?
