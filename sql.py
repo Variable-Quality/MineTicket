@@ -304,11 +304,11 @@ class SQLManager:
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
         safe_variables = []
         for item in variables:
-            safe_variables.append(re.sub(r"[^0-9A-Za-z]", "", item))
+            safe_variables.append(re.sub(r"[^0-9A-Za-z_]", "", item))
         
         safe_values = []
         for item in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z ,]", "", item))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ,_]", "", item))
 
         sql = f"UPDATE {safe_table} SET"
         for i in range(1,len(safe_values)):

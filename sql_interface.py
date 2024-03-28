@@ -65,10 +65,17 @@ class TableEntry:
 
         else:
             self.table_dict = table_info
+
         for key in self.table_dict.keys():
             self.__dict__[key] = self.table_dict[key]
 
         self.columns = list(self.table_dict.keys())[1:]
+
+    # Janky workaround to update dict items to match class attributes
+    # Could move this to the update() function, or push(), or both
+    def update_dict(self):
+        for key in self.table_dict.keys():
+            self.table_dict[key] = self.__dict__[key]
 
 
     def __str__(self):
@@ -87,7 +94,7 @@ class TableEntry:
             for player in players:
                 names.append(player.split(',')[0])
         try:
-            sname = self.involved_staff.split(",")[1]
+            sname = self.involved_staff_discord.split(",")[1]
         except IndexError:
             sname = ""
         return f"Ticket ID: {self.table_dict['id']}\nPlayers: [{players}]\nStaff: [{sname}]\nMessage: {self.table_dict['message']}\nStatus: {self.table_dict['status']}"
@@ -95,7 +102,10 @@ class TableEntry:
     # Adds the Table into the database table specified in the init
     def push(self):
         # If the entry exists with that ID, warn and return.
-        table_entry = fetch_by_id(int(self.table_dict["id"]))
+        try:
+            table_entry = fetch_by_id(int(self.table_dict["id"]))
+        except TypeError:
+            table_entry = None
         if table_entry != None:
             print(
                 f"WARNING!!! Ticket with ID {self.table_dict['id']} (likely) already exists! Use update() instead!"
@@ -115,8 +125,10 @@ class TableEntry:
     # Updates an existing ticket in the database with the current TableEntry object.
     def update(self):
         # These values are in order depending on the SQL database columns
-        values = [self.involved_players, self.involved_staff, self.message, self.status]
-        self._manager.update_row(self.table, self.columns, values, self.id)
+        values = []
+        for key in list(self.table_dict.keys())[1:]:
+            values.append(self.table_dict[key])
+        self._manager.update_row(self.cfm.cfg["DATABASE"]["table"], self.columns, values, self.id)
 
 
 # Allows access to the SQLManager reset_to_default command
@@ -137,16 +149,12 @@ def fetch_by_id(id: int, config:str=None) -> TableEntry:
         # print(result)
     except IndexError:
         return None
-
-    table_dict = {
-      "id": res[0], 
-      "involved_players_discord": res[1], 
-      "involved_players_minecraft": res[2],
-      "involved_staff_discord": res[3],
-      "involved_staff_minecraft": res[4],
-      "status": res[5],
-      "message": res[6]
-    }
+    
+    table_dict = {}
+    index = 0
+    for column in columns:
+        table_dict[column] = res[index]
+        index += 1
 
     return TableEntry(table_info=table_dict)
 
@@ -157,25 +165,19 @@ def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
     manager = SQLManager()
     cfm = db_cfm(filename=cfg)
     table = cfm.cfg["DATABASE"]["table"]
-    cols = list(cfm.cfg["TABLE"].keys())
+    columns = list(cfm.cfg["TABLE"].keys())
 
-    result = manager.select(cols, table, {"status": status})
+    result = manager.select(columns, table, {"status": status})
     if max > 0:
         result = result[:max]
 
     entries = []
     for res in result:
-        # TODO: Reformat this to be made programatically
-        # ATM its dependent on the default config
-        table_dict = {
-                      "id": res[0], 
-                      "involved_players_discord": res[1], 
-                      "involved_players_minecraft": res[2],
-                      "involved_staff_discord": res[3],
-                      "involved_staff_minecraft": res[4],
-                      "status": res[5],
-                      "message": res[6]
-                    }
+        table_dict = {}
+        index = 0
+        for column in columns:
+            table_dict[column] = res[index]
+            index += 1
         # print(result)
         temp = TableEntry(
             table_info=table_dict
@@ -186,7 +188,9 @@ def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
 
 
 # Allows access to the function in sql.py of the same name
-def get_most_recent_entry(table, only_id=False):
+# TODO:
+# Pull entry into a TableEntry object rather than just a list
+def get_most_recent_entry(table, only_id=False) -> list:
     manager = SQLManager()
     entry = manager.get_most_recent_entry(table, only_id)
     return entry
