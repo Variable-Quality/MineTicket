@@ -2,104 +2,126 @@ import discord
 import json
 import sql_interface as sql
 
-# lets assume that a channel called #intake,
-# in the category called "Tickets" will be made,
-# make sure JSONParser only reads from there
 
-class ParseJSON():
-    def __init__(self, guild):
+class ParseJSON:
+    def __init__(self, client, guild):
+        self.client = client
         self.guild = guild
+        self.setup_listener()
 
-    async def check_json_messages(self, client):
-        category_name = "Tickets"
-        channel_name = "intake"
-
-        #check if setup was performed
-        category = discord.utils.get(self.guild.categories, name = category_name)
-        if not category:
-            print(f"Category '{category_name}' not found in guild '{self.guild.name}")
-            return
-        channel = discord.utils.get(category.text_channels, name = channel_name)
-        if not channel:
-            print(f"Channel '{channel_name}' not found in category '{category_name}'")
-            return
-        
-        # ok, now read any new message in intake
-        @client.event
+    def setup_listener(self):
+        @self.client.event
         async def on_message(message):
-            if message.channel == channel:
+            if (
+                message.channel.name == "intake"
+                and message.channel.category.name == "Tickets"
+            ):
                 await self.parse_json_message(message)
 
-    # ok time to read JSON
     async def parse_json_message(self, message):
         try:
             json_data = json.loads(message.content)
-            self.message_object = message
-            self.event = json_data["event"]
-            self.player_id = json_data["discord-id"]
-            #Not sure what to do with this atm but I would imagine its something ingame
-            #So for now it has a place in the message object
-            self.player_uuid = json_data["player-uuid"]
-            self.id = int(json_data["id"])
-            self.message = json_data["message"]
-            
+            # Extract relevant information from JSON data
+            event = json_data.get("event")
+            user_uuid = json_data.get("user-uuid")
+            discord_id = json_data.get("discord-id")
+            message_content = json_data.get("message")
+            # Call the corresponding event handler based on the event type
+            if event == "create":
+                await self.create_event(user_uuid, discord_id, message_content)
+            elif event == "claim":
+                ticket_id = json_data.get("id")
+                await self.claim_event(ticket_id, user_uuid, discord_id)
+            elif event == "close":
+                ticket_id = json_data.get("id")
+                await self.close_event(
+                    ticket_id, user_uuid, discord_id, message_content
+                )
         except json.JSONDecodeError:
-            return # Skip if not JSON
-        
-        # The event does one of the three Cs
-        event = json_data.get("event")
-        if event == "create":
-            await self.create_event(json_data)
-        elif event == "claim":
-            await self.claim_event(json_data)
-        elif event == "close":
-            await self.close_event(json_data)
-     
-    # ok now do magic with the events   
-    async def create_event(self, json_data):
-        player_id = json_data["discord-id"]
-        # player_uuid = json_data["player-uuid"] <-- this is that minecraft UUID, can we take that in?
-        message = json_data["message"]
+            print("Invalid JSON format")
 
-        # Make a ticket from this info
-        # We gotta makee sure to make player_uuid makes it in next round
+    async def create_event(self, user_uuid, discord_id, message):
+        """
+        Creates a new ticket based on the provided user UUID, Discord ID, and message.
 
-        # discord.Object since it needs an .Interaction
-        player = sql.player_from_interaction(discord.Object(id=int(player_id)))
+        Args:
+            user_uuid (str): The UUID of the user creating the ticket.
+            discord_id (str): The Discord ID of the user creating the ticket.
+            message (str): The message content of the ticket.
+
+        Returns:
+            None
+        """
+        # Create a ticket in the database
+        player = sql.player_from_interaction(discord.Object(id=int(discord_id)))
         entry = sql.TableEntry(
             players=str(player),
             staff="",
             message=message,
             status="open",
-            table="players"
+            table="players",
         )
         entry.push()
-        # grab the ID
         ticket_id = sql.get_most_recent_entry("players", only_id=True)
-        # add a message here to confirm?
 
+        # Create a separate channel for the ticket
+        category = discord.utils.get(self.guild.categories, name="Tickets")
+        channel_name = f"ticket-{ticket_id}"
+        overwrites = {
+            self.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            discord_id: discord.PermissionOverwrite(read_messages=True),
+        }
+        channel = await self.guild.create_text_channel(
+            channel_name, category=category, overwrites=overwrites
+        )
 
-    async def claim_event(self, json_data):
-        ticket_id = json_data["id"]
-        staff_id = json_data["discord-id"]
+        # Send an embedded message in the ticket channel
+        embed = discord.Embed(
+            title=f"Ticket #{ticket_id}",
+            description=message,
+            color=discord.Color.blue(),
+        )
+        # TODO: Add buttons for claiming and closing the ticket
+        await channel.send(embed=embed)
 
+    async def claim_event(self, ticket_id, user_uuid, discord_id):
+        """
+        Claims a ticket by updating the ticket status and assigning the staff member.
+
+        Args:
+            ticket_id (int): The ID of the ticket to be claimed.
+            user_uuid (str): The UUID of the user claiming the ticket.
+            discord_id (str): The Discord ID of the user claiming the ticket.
+
+        Returns:
+            None
+        """
+        # Update the ticket status to "claimed" and assign the staff member
         entry = sql.fetch_by_id(ticket_id, "players")
         if entry:
-            staff_member = sql.player_from_interaction(discord.Object(id=int(staff_id)))
+            staff_member = sql.player_from_interaction(
+                discord.Object(id=int(discord_id))
+            )
             entry.involved_staff = str(staff_member)
             entry.status = "claimed"
             entry.update()
-            # add a messsage to confirm?
 
-    async def close_event(self, json_data):
-        ticket_id = json_data["id"]
-        player_id = json_data["discord-id"]
-        message = json_data["message"]
-    
-        # Close the ticket with the player's information
+    async def close_event(self, ticket_id, user_uuid, discord_id, message):
+        """
+        Closes a ticket by updating the ticket status and message.
+
+        Args:
+            ticket_id (int): The ID of the ticket to be closed.
+            user_uuid (str): The UUID of the user closing the ticket.
+            discord_id (str): The Discord ID of the user closing the ticket.
+            message (str): The closing message for the ticket.
+
+        Returns:
+            None
+        """
+        # Close the ticket and update the message
         entry = sql.fetch_by_id(ticket_id, "players")
         if entry:
             entry.status = "closed"
             entry.message = message
             entry.update()
-            # add a message here to confirm?
