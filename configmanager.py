@@ -1,32 +1,34 @@
 from configparser import ConfigParser
 import os.path
 
-#path to config directory
+# path to config directory
 CONFIG_LOCATION = "config"
 
-#Really basic config file manager, mostly made it to have it
-#Not sure if it'll be useful
-class config_manager():
 
-    def __init__(self, filename:str):
+# Really basic config file manager, mostly made it to have it
+# Not sure if it'll be useful
+class config_manager:
+
+    def __init__(self, filename: str):
         self.filename = filename
         self.cfg = ConfigParser()
 
-        #If the file already exists, read it into the configparser
+        # If the file already exists, read it into the configparser
         if os.path.isfile(filename):
             with open(filename, "r") as f:
                 self.cfg.read(f)
 
-    def change_file(self, filename:str):
+    def change_file(self, filename: str):
         self.filename = filename
 
-    #Overwrites current file with dictionary passed in
-    def write_file(self, data:dict):
+    # Overwrites current file with dictionary passed in
+    def write_file(self, data: dict):
         with open(self.filename, "w") as f:
             self.cfg = data
             self.cfg.write(f)
 
-class database_config_manager():
+
+class database_config_manager:
 
     # If creating a new config, pass in a dict to data, and information such as database name, table name, and login info into the info dict.
     # Skip the ID field, that one is assumed.
@@ -35,12 +37,14 @@ class database_config_manager():
     #
     # If loading existing config, pass in the filename (extension included)
     # Note: This code assumes a single table. It could be modified to expect multiple, however we don't believe it's needed in this application.
-    def __init__(self, data:dict=None, info:dict=None, filename:str=None):
+    def __init__(self, data: dict = None, info: dict = None, filename: str = None):
         self.cfg = ConfigParser()
         self.filename = f"{CONFIG_LOCATION}/{filename}"
         if (data and not info) or (info and not data):
-            raise Exception("WARNING!! Config file MUST contain both the data and information of the database!!")
-        
+            raise Exception(
+                "WARNING!! Config file MUST contain both the data and information of the database!!"
+            )
+
         elif data and info:
             data["id"] = "SERIAL PRIMARY KEY"
             self.cfg["DATABASE"] = info
@@ -51,7 +55,7 @@ class database_config_manager():
             with open(self.filename, "r") as f:
                 self.cfg.read(f)
 
-        # If all 3 are none, use the premade config file.       
+        # If all 3 are none, use the premade config file.
         else:
             self.default_config()
 
@@ -94,12 +98,8 @@ class database_config_manager():
         with open(f"{self.filename}", writemode) as f:
             self.cfg.write(f)
 
-    def read(self, filename:str=None):
+    def read(self, filename: str = None):
         if filename:
             self.filename = filename
         with open(self.filename, "r") as f:
             self.cfg.read(f)
-
-
-
-
