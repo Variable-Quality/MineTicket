@@ -53,32 +53,39 @@ class database_config_manager:
 
         elif filename:
             with open(self.filename, "r") as f:
-                self.cfg.read(self.filename)
+                self.cfg.read(f)
 
         # If all 3 are none, use the premade config file.
         else:
             self.default_config()
 
     def default_config(self):
-        self.cfg["DATABASE"] = {
-            "database": "test",
-            "table": "tickets",
-            "username": "root",
-            "password": "toor",
-            "host": "localhost",
-            "port": "3306",
-        }
+        # Table name is stored in the DATABASE section since its much easier to use the keys of the TABLE section to define column names
+        token_loader = ConfigParser()
+        # The token should be included in the config file
+        # We don't hardcode it so it doesn't show up in the git changelog
+        token_loader.read(f"{CONFIG_LOCATION}/token.ini")
+        self.cfg["DATABASE"] = {"database": "test", 
+                                "table": "tickets", 
+                                "username": "root", 
+                                "password": "toor",
+                                "host": "localhost",
+                                "port": "3306"}
+        
+        self.cfg["TABLE"] = {"id": "SERIAL PRIMARY KEY",
+                              #involved_players is a TEXT object just in case there are a metric ton of players on one ticket
+                              "involved_players_discord": "TEXT",
+                              "involved_players_minecraft": "TEXT",
+                              "involved_staff_discord": "varchar(256)",
+                              "involved_staff_minecraft": "varchar(256)",
+                              "status": "varchar(16)",
+                              "message": "TEXT"}
 
-        self.cfg["TABLE"] = {
-            "id": "SERIAL PRIMARY KEY",
-            # involved_players_discord is a TEXT object just in case there are a metric ton of players on one ticket
-            "involved_players_discord": "TEXT",
-            "involved_players_minecraft": "varchar(256)",
-            "involved_staff_discord": "varchar(256)",
-            "involved_staff_minecraft": "varchar(256)",
-            "status": "varchar(16)",
-            "message": "TEXT",
-        }
+
+        self.cfg["BOT"] = {"token": token_loader["SECRET"]["token"],
+                           "staff_role": "Staff",
+                           "ingest_channel": "bot_ingest"}
+
 
         self.filename = f"{CONFIG_LOCATION}/default.ini"
 

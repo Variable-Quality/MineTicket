@@ -7,16 +7,15 @@ import random
 import ui as bot_ui
 from buttons import Buttons
 import json_parsing as json
+from configmanager import database_config_manager as db_cfm
 
-cfg = configparser.ConfigParser()
-cfg.read("config.ini")
-TOKEN = cfg["SECRET"]["token"]
-
-# TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
-TABLE_NAME = "players"
-WEBHOOK_CHANNEL = "bot_ingest"
-INTAKE_CHANNEL = "intake"
-STAFF_ROLE = "Staff"
+CONFIG_FILENAME = None
+CFM = db_cfm(filename=CONFIG_FILENAME)
+TOKEN = CFM.cfg["BOT"]["token"]
+print(TOKEN)
+TABLE_NAME = CFM.cfg["DATABASE"]["table"]
+WEBHOOK_CHANNEL = CFM.cfg["BOT"]["ingest_channel"]
+STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 
 
 class Bot(discord.Client):
@@ -135,13 +134,24 @@ async def open_ticket(interaction: discord.Interaction):
     # Grab player using function from sql_interface
     player = sql.player_from_interaction(interaction)
 
+    # Hardcoded Dict, can't think of a way to load this from a config file
+    table_dict = {
+                "id": None,
+                "involved_players_discord": str(player).split(",")[1],
+                # TODO:
+                # Add logic to look up player's ingame minecraft name, or vice versa
+                "involved_players_minecraft": "",
+                "involved_staff_discord": "",
+                "involved_staff_minecraft": "",
+                "status": "open",
+                # TODO:
+                # Update message field with info player fills in from UI
+                "message": "I'm a filler message! Yipee!!!"
+                }
+
     # Create the ticket in sql
     ticket = sql.TableEntry(
-        players=str(player),
-        staff="",
-        message=f"Ticket #{ticket_id} created by {interaction.user.mention}!",
-        status="open",
-        table=TABLE_NAME,
+        table_info=table_dict
     )
 
     # Push it!
@@ -149,6 +159,7 @@ async def open_ticket(interaction: discord.Interaction):
 
     # TODO:
     # Modify these overwrites when new player is added
+    # Move this entire chunk of code to a "Create channel" function rather than here
     overwrites = {
         interaction.guild.default_role: discord.PermissionOverwrite(
             read_messages=False, send_messages=False
@@ -181,6 +192,11 @@ async def open_ticket(interaction: discord.Interaction):
     name="claim_ticket", description="Claim a support ticket as a staff member"
 )
 async def claim_ticket(interaction: discord.Interaction):
+    # TODO:
+    # Move this to be able to work in a button
+    # That way we wont need to check for the category or anything since the button will show up where we want it to
+    # Maybe even delete the slash command
+
     # Check if in ticket channel
     if interaction.channel.category and interaction.channel.category.name == "Tickets":
         # Check role, ex staff
@@ -201,21 +217,21 @@ async def claim_ticket(interaction: discord.Interaction):
 
             staff_member = sql.player_from_interaction(interaction)
             # Update database logic here
-            entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
-
-            if len(entry.involved_staff) > 0:
-                staff_name = entry.involved_staff.split(",")[0]
-                interaction.response.send_message(
-                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
-                    ephemeral=True,
+            entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
+            
+            if len(entry.involved_staff_discord) > 0:
+                staff_name = entry.involved_staff_discord.split(",")[0]
+                await interaction.response.send_message(
+                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.", ephemeral=True
                 )
                 return
 
-            entry.involved_staff = str(staff_member)
+            entry.involved_staff_discord = str(staff_member)
             entry.status = "claimed"
+            entry.update_dict()
             entry.update()
             await interaction.response.send_message(
-                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}."
+                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.", ephemeral=False
             )
 
         else:
@@ -249,7 +265,7 @@ async def close_ticket(interaction: discord.Interaction):
 
         # await interaction.channel.delete()
         # Notify channel is closed, dont delete yet
-        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+        entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
         entry.status = "closed"
 
         curr_overwrites = interaction.channel.overwrites
@@ -257,9 +273,8 @@ async def close_ticket(interaction: discord.Interaction):
         for key in keys[1:]:
             print(f"MEMBER ID: {key.id}")
             member = bot.get_user(int(key.id))
-            await interaction.channel.set_permissions(
-                member, send_messages=False, read_messages=True
-            )
+            await interaction.channel.set_permissions(member, send_messages=False, read_messages=True)
+        entry.update_dict()
         entry.update()
         await interaction.response.send_message(
             f" Ticket #{ticket_id} has been closed."
