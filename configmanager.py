@@ -65,27 +65,32 @@ class database_config_manager:
         # The token should be included in the config file
         # We don't hardcode it so it doesn't show up in the git changelog
         token_loader.read(f"{CONFIG_LOCATION}/token.ini")
-        self.cfg["DATABASE"] = {"database": "test", 
-                                "table": "tickets", 
-                                "username": "root", 
-                                "password": "toor",
-                                "host": "localhost",
-                                "port": "3306"}
-        
-        self.cfg["TABLE"] = {"id": "SERIAL PRIMARY KEY",
-                              #involved_players is a TEXT object just in case there are a metric ton of players on one ticket
-                              "involved_players_discord": "TEXT",
-                              "involved_players_minecraft": "TEXT",
-                              "involved_staff_discord": "varchar(256)",
-                              "involved_staff_minecraft": "varchar(256)",
-                              "status": "varchar(16)",
-                              "message": "TEXT"}
+        self.cfg["DATABASE"] = {
+            "database": "test",
+            "table": "tickets",
+            "username": "root",
+            "password": "toor",
+            "host": "localhost",
+            "port": "3306",
+        }
 
+        self.cfg["TABLE"] = {
+            "id": "SERIAL PRIMARY KEY",
+            # involved_players is a TEXT object just in case there are a metric ton of players on one ticket
+            "involved_players_discord": "TEXT",
+            "involved_players_minecraft": "TEXT",
+            "involved_staff_discord": "varchar(256)",
+            "involved_staff_minecraft": "varchar(256)",
+            "status": "varchar(16)",
+            "message": "TEXT",
+        }
 
-        self.cfg["BOT"] = {"token": token_loader["SECRET"]["token"],
-                           "staff_role": "Staff",
-                           "ingest_channel": "bot_ingest"}
-
+        self.cfg["BOT"] = {
+            "token": token_loader["SECRET"]["token"],
+            "staff_role": "Staff",
+            "ingest_channel": "bot_ingest",
+            "intake_channel": "intake",
+        }
 
         self.filename = f"{CONFIG_LOCATION}/default.ini"
 

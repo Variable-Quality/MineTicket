@@ -13,6 +13,7 @@ TOKEN = CFM.cfg["BOT"]["token"]
 print(TOKEN)
 TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 WEBHOOK_CHANNEL = CFM.cfg["BOT"]["ingest_channel"]
+INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 
 
@@ -88,11 +89,13 @@ async def run_setup(interaction: discord.Interaction):
     if not ticket_category:
         ticket_category = await interaction.guild.create_category("Tickets")
 
-    # Create the "intake" channel within the "Tickets" category if it doesn't exist
-    intake_channel = discord.utils.get(ticket_category.channels, name="intake")
-    if not intake_channel:
-        intake_channel = await interaction.guild.create_text_channel(
-            "intake", category=ticket_category
+    # Create the "Mineticket Feed" channel within the "Tickets" category if it doesn't exist
+    mineticket_feed_channel = discord.utils.get(
+        ticket_category.channels, name="Mineticket Feed"
+    )
+    if not mineticket_feed_channel:
+        mineticket_feed_channel = await interaction.guild.create_text_channel(
+            "Mineticket Feed", category=ticket_category
         )
 
     # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
@@ -101,6 +104,10 @@ async def run_setup(interaction: discord.Interaction):
         ticket_channel = await interaction.guild.create_text_channel(
             "create-a-ticket", category=ticket_category
         )
+
+    manager = SQLManager()
+    table_data = CFM.cfg["TABLE"]
+    manager.create_table(CFM.cfg["DATABASE"]["table"], table_data)
 
     # Create a Buttons instance via buttons.py
     buttons = Buttons()
@@ -134,23 +141,21 @@ async def open_ticket(interaction: discord.Interaction):
 
     # Hardcoded Dict, can't think of a way to load this from a config file
     table_dict = {
-                "id": None,
-                "involved_players_discord": str(player).split(",")[1],
-                # TODO:
-                # Add logic to look up player's ingame minecraft name, or vice versa
-                "involved_players_minecraft": "",
-                "involved_staff_discord": "",
-                "involved_staff_minecraft": "",
-                "status": "open",
-                # TODO:
-                # Update message field with info player fills in from UI
-                "message": "I'm a filler message! Yipee!!!"
-                }
+        "id": None,
+        "involved_players_discord": str(player).split(",")[1],
+        # TODO:
+        # Add logic to look up player's ingame minecraft name, or vice versa
+        "involved_players_minecraft": "",
+        "involved_staff_discord": "",
+        "involved_staff_minecraft": "",
+        "status": "open",
+        # TODO:
+        # Update message field with info player fills in from UI
+        "message": "I'm a filler message! Yipee!!!",
+    }
 
     # Create the ticket in sql
-    ticket = sql.TableEntry(
-        table_info=table_dict
-    )
+    ticket = sql.TableEntry(table_info=table_dict)
 
     # Push it!
     ticket.push()
@@ -216,11 +221,12 @@ async def claim_ticket(interaction: discord.Interaction):
             staff_member = sql.player_from_interaction(interaction)
             # Update database logic here
             entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
-            
+
             if len(entry.involved_staff_discord) > 0:
                 staff_name = entry.involved_staff_discord.split(",")[0]
                 await interaction.response.send_message(
-                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.", ephemeral=True
+                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
+                    ephemeral=True,
                 )
                 return
 
@@ -229,7 +235,8 @@ async def claim_ticket(interaction: discord.Interaction):
             entry.update_dict()
             entry.update()
             await interaction.response.send_message(
-                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.", ephemeral=False
+                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
+                ephemeral=False,
             )
 
         else:
@@ -271,7 +278,9 @@ async def close_ticket(interaction: discord.Interaction):
         for key in keys[1:]:
             print(f"MEMBER ID: {key.id}")
             member = bot.get_user(int(key.id))
-            await interaction.channel.set_permissions(member, send_messages=False, read_messages=True)
+            await interaction.channel.set_permissions(
+                member, send_messages=False, read_messages=True
+            )
         entry.update_dict()
         entry.update()
         await interaction.response.send_message(

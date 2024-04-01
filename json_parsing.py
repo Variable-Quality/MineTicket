@@ -1,6 +1,13 @@
 import discord
 import json
 import sql_interface as sql
+from configmanager import database_config_manager as db_cfm
+from buttons import Buttons
+
+# Solomon/DJ - when you get to this point in the merge - We need the naming of the buttons to change into what they are *now* with the new stuff. THis was written for the old way of doing buttons.
+
+CFM = db_cfm()
+TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 
 
 class ParseJSON:
@@ -29,13 +36,9 @@ class ParseJSON:
             None
         """
         try:
-            # Parse the JSON data from the message content
             json_data = json.loads(message.content)
-
-            # Extract the event type from the JSON data
             event = json_data.get("event")
 
-            # Call the appropriate event handler based on the event type
             if event == "create":
                 user_uuid = json_data.get("user-uuid")
                 discord_id = json_data.get("discord-id")
@@ -57,7 +60,7 @@ class ParseJSON:
             else:
                 print(f"Unknown event type: {event}")
         except json.JSONDecodeError:
-            print("Invalid JSON format")
+            print(f"Invalid JSON format in message\n{message.content}")
 
     async def create_event(self, user_uuid, discord_id, message):
         """
@@ -72,48 +75,36 @@ class ParseJSON:
             None
         """
         try:
-            # Fetch the user object using the discord_id
             user = self.bot.get_user(int(discord_id))
 
             if user is None:
                 raise ValueError(f"User with ID {discord_id} not found.")
 
-            # Create a player object from the user
             player = sql.Player(user.name, discord_id)
 
-            # Create a new ticket entry in the database
-            entry = sql.TableEntry(
-                players=str(player),
-                staff="",
-                message=message,
-                status="open",
-                table=TABLE_NAME,
-            )
-            entry.push()
-
-            # Get the ID of the newly created ticket
-            ticket_id = sql.get_most_recent_entry(TABLE_NAME, only_id=True)
-
-            # Get the "Tickets" category
-            category = discord.utils.get(self.guild.categories, name="Tickets")
-
-            # Generate the channel name for the ticket
-            channel_name = f"ticket-{ticket_id}"
-
-            # Set the channel permissions
-            overwrites = {
-                self.guild.default_role: discord.PermissionOverwrite(
-                    read_messages=False
-                ),
-                user: discord.PermissionOverwrite(read_messages=True),
+            # Create a new ticket entry using the table configuration from configmanager
+            table_dict = {
+                "id": None,
+                "involved_players_discord": str(player),
+                "involved_players_minecraft": "",
+                "involved_staff_discord": "",
+                "involved_staff_minecraft": "",
+                "status": "open",
+                "message": message,
             }
 
-            # Create a new text channel for the ticket
-            channel = await self.guild.create_text_channel(
-                channel_name, category=category, overwrites=overwrites
+            entry = sql.TableEntry(table_info=table_dict)
+            entry.push()
+
+            ticket_id = sql.get_most_recent_entry(TABLE_NAME, only_id=True)
+
+            mineticket_feed_channel = discord.utils.get(
+                self.guild.text_channels, name="mineticket-feed"
             )
 
-            # Create an embedded message with ticket details
+            if mineticket_feed_channel is None:
+                raise ValueError("Mineticket Feed channel not found.")
+
             embed = discord.Embed(
                 title=f"Ticket #{ticket_id}",
                 description=message,
@@ -122,8 +113,8 @@ class ParseJSON:
             embed.add_field(name="Created by", value=user.mention, inline=False)
             embed.add_field(name="Status", value="Open", inline=False)
 
-            # Send the embedded message in the ticket channel
-            await channel.send(embed=embed)
+            buttons = Buttons(timeout=None)
+            await mineticket_feed_channel.send(embed=embed, view=buttons)
         except Exception as e:
             print(f"Error creating ticket: {str(e)}")
 
@@ -140,7 +131,7 @@ class ParseJSON:
             None
         """
         # Update the ticket status to "claimed" and assign the staff member
-        entry = sql.fetch_by_id(ticket_id, "players")
+        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
         if entry:
             staff_member = sql.player_from_interaction(
                 discord.Object(id=int(discord_id))
@@ -163,7 +154,7 @@ class ParseJSON:
             None
         """
         # Close the ticket and update the message
-        entry = sql.fetch_by_id(ticket_id, "players")
+        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
         if entry:
             entry.status = "closed"
             entry.message = message

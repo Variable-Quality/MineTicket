@@ -3,6 +3,7 @@ import sys
 import configparser
 import re
 from configmanager import database_config_manager as db_cfm
+
 # https://mariadb-corporation.github.io/mariadb-connector-python/cursor.html
 # Important API doc
 
@@ -18,7 +19,7 @@ from configmanager import database_config_manager as db_cfm
 
 class SQLManager:
 
-    def __init__(self, cfg:str=None):
+    def __init__(self, cfg: str = None):
         cfm = db_cfm(filename=cfg)
         self.USER = cfm.cfg["DATABASE"]["username"]
         self.PASSWORD = cfm.cfg["DATABASE"]["password"]
@@ -51,7 +52,7 @@ class SQLManager:
         return conn
 
     # Resets test database to a default state, containing a single fake ticket.
-    def reset_to_default(self, debug_entry=False, config:str=None):
+    def reset_to_default(self, debug_entry=False, config: str = None):
         try:
             cfm = db_cfm(filename=config)
             data = cfm.cfg["TABLE"]
@@ -64,10 +65,12 @@ class SQLManager:
                 conn.commit()
             except mariadb.Error as e:
                 print("Database test does not exist! Continuing on anyway...")
-                
+
             cur.execute(f"CREATE DATABASE {cfm.cfg['DATABASE']['database']}")
             self.create_table(table=cfm.cfg["DATABASE"]["table"], table_data=data)
-            print(f"Database {cfm.cfg['DATABASE']['database']} created!\nTable {cfm.cfg['DATABASE']['table']} created!")
+            print(
+                f"Database {cfm.cfg['DATABASE']['database']} created!\nTable {cfm.cfg['DATABASE']['table']} created!"
+            )
 
             columns = []
             values = []
@@ -217,7 +220,7 @@ class SQLManager:
 
     # Makes an SQL table.
     # Table Data is an array of string tuples, with the first value being the column name, and the second value being the data it holds.
-    def create_table(self, table: str, table_data:dict):
+    def create_table(self, table: str, table_data: dict):
         # Sanitize like it's mid 2020
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
@@ -226,6 +229,16 @@ class SQLManager:
             regex = r"[^0-9A-Za-z()_]"
             temp_tuple = (re.sub(regex, "", key), re.sub(regex, "", table_data[key]))
             safe_table_data.append(temp_tuple)
+        # Palmer/Art apprach (Sorry DJ)
+        table_data_string = "(id SERIAL PRIMARY KEY, "
+        for column, datatype in table_data.items():
+            if column != "id":
+                table_data_string += f"{column} {datatype}, "
+        table_data_string = table_data_string.rstrip(", ") + ");"
+
+        sql = f"CREATE TABLE IF NOT EXISTS {safe_table} {table_data_string}"
+
+        """ DJ Approach
         table_data_string = "(id SERIAL PRIMARY KEY, "
         index = 1
         for column in safe_table_data[1:]:
@@ -240,6 +253,8 @@ class SQLManager:
         # Example output:
         # CREATE TABLE players (Name varchar(255), IngameID int, ticketID int)
         sql = f"CREATE TABLE IF NOT EXISTS {safe_table} {table_data_string}"
+        
+        """
         # DEBUGGING
         # print(f"\n{sql}\n")
         try:
@@ -308,7 +323,7 @@ class SQLManager:
         safe_variables = []
         for item in variables:
             safe_variables.append(re.sub(r"[^0-9A-Za-z_]", "", item))
-        
+
         safe_values = []
         for item in values:
             safe_values.append(re.sub(r"[^0-9A-Za-z ,_]", "", item))
