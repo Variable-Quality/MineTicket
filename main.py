@@ -1,9 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import configparser
 import sql_interface as sql
-import random
 import ui as bot_ui
 from buttons import Buttons
 import json_parsing as json
