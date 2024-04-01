@@ -72,8 +72,14 @@ class ParseJSON:
             None
         """
         try:
-            # Create a player object from the Discord ID
-            player = sql.player_from_interaction(discord.Object(id=int(discord_id)))
+            # Fetch the user object using the discord_id
+            user = self.bot.get_user(int(discord_id))
+
+            if user is None:
+                raise ValueError(f"User with ID {discord_id} not found.")
+
+            # Create a player object from the user
+            player = sql.Player(user.name, discord_id)
 
             # Create a new ticket entry in the database
             entry = sql.TableEntry(
@@ -81,12 +87,12 @@ class ParseJSON:
                 staff="",
                 message=message,
                 status="open",
-                table="players",
+                table=TABLE_NAME,
             )
             entry.push()
 
             # Get the ID of the newly created ticket
-            ticket_id = sql.get_most_recent_entry("players", only_id=True)
+            ticket_id = sql.get_most_recent_entry(TABLE_NAME, only_id=True)
 
             # Get the "Tickets" category
             category = discord.utils.get(self.guild.categories, name="Tickets")
@@ -99,7 +105,7 @@ class ParseJSON:
                 self.guild.default_role: discord.PermissionOverwrite(
                     read_messages=False
                 ),
-                discord_id: discord.PermissionOverwrite(read_messages=True),
+                user: discord.PermissionOverwrite(read_messages=True),
             }
 
             # Create a new text channel for the ticket
@@ -113,7 +119,7 @@ class ParseJSON:
                 description=message,
                 color=discord.Color.blue(),
             )
-            embed.add_field(name="Created by", value=f"<@{discord_id}>", inline=False)
+            embed.add_field(name="Created by", value=user.mention, inline=False)
             embed.add_field(name="Status", value="Open", inline=False)
 
             # Send the embedded message in the ticket channel
