@@ -4,12 +4,12 @@ import sql_interface as sql
 
 
 class ParseJSON:
-    def __init__(self, client, guild):
-        self.client = client
+    def __init__(self, bot, guild):
+        self.bot = bot
         self.guild = guild
-        self.setup_listener()
 
     def setup_listener(self):
+        # This section may not be necessary in a bit, we will see
         @self.client.event
         async def on_message(message):
             if (
@@ -19,24 +19,43 @@ class ParseJSON:
                 await self.parse_json_message(message)
 
     async def parse_json_message(self, message):
+        """
+        Parses the JSON message and triggers the appropriate event handler based on the event type.
+
+        Args:
+            message (discord.Message): The message object containing the JSON data.
+
+        Returns:
+            None
+        """
         try:
+            # Parse the JSON data from the message content
             json_data = json.loads(message.content)
-            # Extract relevant information from JSON data
+
+            # Extract the event type from the JSON data
             event = json_data.get("event")
-            user_uuid = json_data.get("user-uuid")
-            discord_id = json_data.get("discord-id")
-            message_content = json_data.get("message")
-            # Call the corresponding event handler based on the event type
+
+            # Call the appropriate event handler based on the event type
             if event == "create":
+                user_uuid = json_data.get("user-uuid")
+                discord_id = json_data.get("discord-id")
+                message_content = json_data.get("message")
                 await self.create_event(user_uuid, discord_id, message_content)
             elif event == "claim":
                 ticket_id = json_data.get("id")
+                user_uuid = json_data.get("user-uuid")
+                discord_id = json_data.get("discord-id")
                 await self.claim_event(ticket_id, user_uuid, discord_id)
             elif event == "close":
                 ticket_id = json_data.get("id")
+                user_uuid = json_data.get("user-uuid")
+                discord_id = json_data.get("discord-id")
+                message_content = json_data.get("message")
                 await self.close_event(
                     ticket_id, user_uuid, discord_id, message_content
                 )
+            else:
+                print(f"Unknown event type: {event}")
         except json.JSONDecodeError:
             print("Invalid JSON format")
 
@@ -52,37 +71,55 @@ class ParseJSON:
         Returns:
             None
         """
-        # Create a ticket in the database
-        player = sql.player_from_interaction(discord.Object(id=int(discord_id)))
-        entry = sql.TableEntry(
-            players=str(player),
-            staff="",
-            message=message,
-            status="open",
-            table="players",
-        )
-        entry.push()
-        ticket_id = sql.get_most_recent_entry("players", only_id=True)
+        try:
+            # Create a player object from the Discord ID
+            player = sql.player_from_interaction(discord.Object(id=int(discord_id)))
 
-        # Create a separate channel for the ticket
-        category = discord.utils.get(self.guild.categories, name="Tickets")
-        channel_name = f"ticket-{ticket_id}"
-        overwrites = {
-            self.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            discord_id: discord.PermissionOverwrite(read_messages=True),
-        }
-        channel = await self.guild.create_text_channel(
-            channel_name, category=category, overwrites=overwrites
-        )
+            # Create a new ticket entry in the database
+            entry = sql.TableEntry(
+                players=str(player),
+                staff="",
+                message=message,
+                status="open",
+                table="players",
+            )
+            entry.push()
 
-        # Send an embedded message in the ticket channel
-        embed = discord.Embed(
-            title=f"Ticket #{ticket_id}",
-            description=message,
-            color=discord.Color.blue(),
-        )
-        # TODO: Add buttons for claiming and closing the ticket
-        await channel.send(embed=embed)
+            # Get the ID of the newly created ticket
+            ticket_id = sql.get_most_recent_entry("players", only_id=True)
+
+            # Get the "Tickets" category
+            category = discord.utils.get(self.guild.categories, name="Tickets")
+
+            # Generate the channel name for the ticket
+            channel_name = f"ticket-{ticket_id}"
+
+            # Set the channel permissions
+            overwrites = {
+                self.guild.default_role: discord.PermissionOverwrite(
+                    read_messages=False
+                ),
+                discord_id: discord.PermissionOverwrite(read_messages=True),
+            }
+
+            # Create a new text channel for the ticket
+            channel = await self.guild.create_text_channel(
+                channel_name, category=category, overwrites=overwrites
+            )
+
+            # Create an embedded message with ticket details
+            embed = discord.Embed(
+                title=f"Ticket #{ticket_id}",
+                description=message,
+                color=discord.Color.blue(),
+            )
+            embed.add_field(name="Created by", value=f"<@{discord_id}>", inline=False)
+            embed.add_field(name="Status", value="Open", inline=False)
+
+            # Send the embedded message in the ticket channel
+            await channel.send(embed=embed)
+        except Exception as e:
+            print(f"Error creating ticket: {str(e)}")
 
     async def claim_event(self, ticket_id, user_uuid, discord_id):
         """

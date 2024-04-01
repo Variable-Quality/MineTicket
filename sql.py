@@ -2,7 +2,7 @@ import mariadb
 import sys
 import configparser
 import re
-from configmanager import database_config_manager as db_cfg
+
 # https://mariadb-corporation.github.io/mariadb-connector-python/cursor.html
 # Important API doc
 
@@ -12,12 +12,15 @@ from configmanager import database_config_manager as db_cfg
 # TODO:
 # Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
 # Add DELETE functions other than just dropping the whole table
-#TODO:
-#Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
+# TODO:
+# Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
+
 
 class SQLManager:
 
-    def __init__(self, cfg:str=None):
+    def __init__(self, cfg: str = None):
+        from configmanager import database_config_manager as db_cfg
+
         cfg = db_cfg(filename=cfg)
         self.USER = cfg["DATABASE"]["username"]
         self.PASSWORD = cfg["DATABASE"]["password"]
@@ -48,6 +51,7 @@ class SQLManager:
             sys.exit(1)
 
         return conn
+
     # Resets test database to a default state, containing a single fake ticket.
     def reset_to_default(self, debug_entry=False):
         try:
@@ -57,12 +61,12 @@ class SQLManager:
             conn = self.create_connection()
             cur = conn.cursor()
             try:
-                cur.execute(f"DROP DATABASE {cfg["DATABASE"]["database"]}")
+                cur.execute(f"DROP DATABASE {cfg['DATABASE']['database']}")
                 conn.commit()
             except mariadb.Error as e:
                 print("Database test does not exist! Continuing on anyway...")
-                
-            cur.execute(f"CREATE DATABASE {cfg["DATABASE"]["database"]}")
+
+            cur.execute(f"CREATE DATABASE {cfg['DATABASE']['database']}")
             self.create_table(cfg["DATABASE"]["table"], data)
 
             columns = []
@@ -136,8 +140,8 @@ class SQLManager:
             # Implement OR statements
             if len(safe_keys) > 1:
                 for key in safe_keys[1:]:
-                    sql += f' AND {key}='
-            #and the paramaters
+                    sql += f" AND {key}="
+            # and the paramaters
             safe_values = []
             for value in where_conditions.values():
                 safe_value = re.sub(r"[^0-9A-Za-z ]", "", value)
@@ -214,7 +218,7 @@ class SQLManager:
     # Makes an SQL table.
     # Table Data is an array of string tuples, with the first value being the column name, and the second value being the data it holds.
     # TODO: Rework to use dict instead
-    def create_table(self, table: str, table_data:dict):
+    def create_table(self, table: str, table_data: dict):
         # Sanitize like it's mid 2020
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
@@ -232,11 +236,11 @@ class SQLManager:
                 table_data_string += f"{column[0]} {column[1]});"
 
             index += 1
-        #Example output:
-        #CREATE TABLE players (Name varchar(255), IngameID int, ticketID int)
+        # Example output:
+        # CREATE TABLE players (Name varchar(255), IngameID int, ticketID int)
         sql = f"CREATE TABLE IF NOT EXISTS {safe_table} {table_data_string}"
-        #DEBUGGING
-        #print(f"\n{sql}\n")
+        # DEBUGGING
+        # print(f"\n{sql}\n")
         try:
             # Create a connection, insert the data, close the connection.
             conn = self.create_connection()
@@ -278,59 +282,59 @@ class SQLManager:
         else:
             safe_value = f'"{safe_value}"'
 
-
         sql = f'DELETE FROM {safe_table} WHERE {safe_variable}="{safe_value}"'
         try:
-           #Create a connection, insert the data, close the connection.
-           conn = self.create_connection()
-           cur = conn.cursor()
-           cur.execute(sql)
-           conn.commit()
+            # Create a connection, insert the data, close the connection.
+            conn = self.create_connection()
+            cur = conn.cursor()
+            cur.execute(sql)
+            conn.commit()
         except mariadb.Error as e:
             print(f"Database error in update_row statement: {e}")
         finally:
             if conn:
                 conn.close()
 
-    def update_row(self, table:str, variables:list, values:list, id:int):
-        #Untested, might behave strangely
+    def update_row(self, table: str, variables: list, values: list, id: int):
+        # Untested, might behave strangely
 
         if len(variables) != len(values):
-            raise Exception(f"Error in updating SQL row: Variables and Values contain different numbers of input.\nVariables:{variables}\nValues:{values}")
+            raise Exception(
+                f"Error in updating SQL row: Variables and Values contain different numbers of input.\nVariables:{variables}\nValues:{values}"
+            )
 
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
         safe_variables = []
         for item in variables:
             safe_variables.append(re.sub(r"[^0-9A-Za-z]", "", item))
-        
+
         safe_values = []
         for item in values:
             safe_values.append(re.sub(r"[^0-9A-Za-z ,]", "", item))
 
         sql = f"UPDATE {safe_table} SET"
-        for i in range(1,len(safe_values)):
+        for i in range(1, len(safe_values)):
             sql += f' {safe_variables[i]} = "{safe_values[i]}"'
-            if i < (len(safe_values)-1):
+            if i < (len(safe_values) - 1):
                 sql += ","
         sql += f" WHERE id = {id}"
         print(sql)
 
-
         try:
-           #Create a connection, insert the data, close the connection.
-           conn = self.create_connection()
-           cur = conn.cursor()
-           cur.execute(sql)
-           conn.commit()
+            # Create a connection, insert the data, close the connection.
+            conn = self.create_connection()
+            cur = conn.cursor()
+            cur.execute(sql)
+            conn.commit()
         except mariadb.Error as e:
             print(f"Database error in update_row statement: {e}")
         finally:
             if conn:
                 conn.close()
 
-    #Fetches the entry with the highest ID, presumably the most recently entered ticket
-    #Returns a list containing each item in the row
-    def get_most_recent_entry(self, table:str, only_id=False) -> list:
+    # Fetches the entry with the highest ID, presumably the most recently entered ticket
+    # Returns a list containing each item in the row
+    def get_most_recent_entry(self, table: str, only_id=False) -> list:
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
         sql = f"SELECT * FROM {safe_table} ORDER BY id DESC LIMIT 1"

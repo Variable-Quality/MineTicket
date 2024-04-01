@@ -15,6 +15,7 @@ TOKEN = cfg["SECRET"]["token"]
 # TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
 TABLE_NAME = "players"
 WEBHOOK_CHANNEL = "bot_ingest"
+INTAKE_CHANNEL = "intake"
 STAFF_ROLE = "Staff"
 
 
@@ -23,11 +24,18 @@ class Bot(discord.Client):
         super().__init__(intents=intents)
         # You can alternatively use ! as a command prefix instead of slash commands
         # Trying to fix as it sometimes does not work
+        self.json_parser = None
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
         # Since the sync command doesnt wanna work, fuck it
         await tree.sync()
+
+        # Initialize the ParseJSON instance inside on_ready
+        if self.guilds:
+            self.json_parser = json.ParseJSON(self, self.guilds[0])
+        else:
+            print("No guilds found. JSON parsing functionality will not be available.")
 
     async def on_message(self, message):
         print(
@@ -38,6 +46,9 @@ class Bot(discord.Client):
         # AttributeError: 'DMChannel' object has no attribute 'name'
         if message.channel.name == WEBHOOK_CHANNEL:
             message_json = json.message(message)
+        if message.channel.name == INTAKE_CHANNEL and self.json_parser is not None:
+            # Call the JSON parsing function
+            await self.json_parser.parse_json_message(message)
 
 
 intents = discord.Intents.default()
