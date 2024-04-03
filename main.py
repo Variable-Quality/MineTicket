@@ -105,9 +105,8 @@ async def run_setup(interaction: discord.Interaction):
             "create-a-ticket", category=ticket_category
         )
 
-    manager = SQLManager()
-    table_data = CFM.cfg["TABLE"]
-    manager.create_table(CFM.cfg["DATABASE"]["table"], table_data)
+    table = sql.Table(config=CFM.filename)
+    table.push()
 
     # Create a Buttons instance via buttons.py
     buttons = Buttons()
