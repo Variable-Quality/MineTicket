@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
 import ui as bot_ui
-from buttons import Buttons
+from buttons import Buttons, ButtonOpen
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
@@ -15,9 +15,6 @@ TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 WEBHOOK_CHANNEL = CFM.cfg["BOT"]["ingest_channel"]
 INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
-
-# Command to sync commands
-# Aye dawg I heard you liked commands
 
 
 # This command isn't working, added sync back to startup for now
@@ -44,7 +41,6 @@ async def run_setup(interaction: discord.Interaction):
         description="Click the button below to start a new ticket.",
         color=discord.Color.blue(),
     )
-
     # Create the "Tickets" category if it doesn't exist
     ticket_category = discord.utils.get(interaction.guild.categories, name="Tickets")
     if not ticket_category:
@@ -68,7 +64,6 @@ async def run_setup(interaction: discord.Interaction):
 
     table = sql.Table(config=CFM.filename)
     table.push()
-
     # Create a Buttons instance via buttons.py
     buttons = Buttons()
     # Add button
@@ -86,7 +81,6 @@ async def run_setup(interaction: discord.Interaction):
 
 @tree.command(name="open_ticket", description="Opens a ticket")
 async def open_ticket(interaction: discord.Interaction):
-
     await create_ticket_helper(interaction)
 
 # May wanna rename commands to be easier to type
@@ -98,17 +92,15 @@ async def claim_ticket(interaction: discord.Interaction, ticket_num:int=None):
     
     await claim_ticket_helper(interaction, ticket_num)
 
-
 @tree.command(name="close_ticket", description="Close the current ticket")
 async def close_ticket(interaction: discord.Interaction, ticket_num:int=None):
 
     await close_ticket_helper(interaction, ticket_num)
 
-
 # Uselsss function
 @tree.command(name="list_tickets", description="List all open support tickets")
-async def list_tickets(ctx: commands.Context):
-    # Grab live tickets from DB
+async def list_tickets(interaction: discord.Interaction):
+    """# Grab live tickets from DB
     open_tickets = None  # (Something like SELECT (["1", "2", "3"]))
 
     if not open_tickets:
@@ -123,7 +115,32 @@ async def list_tickets(ctx: commands.Context):
     #    None = ticket
     #    embed.add_field()
 
-    await ctx.reply(embed=embed)
+    await ctx.reply(embed=embed)"""
+    open_tickets = sql.fetch_by_status("open", TABLE_NAME)
+    claimed_tickets = sql.fetch_by_status("claimed", TABLE_NAME)
+
+    if not open_tickets and not claimed_tickets:
+        await interaction.response.send_message("No open or claimed tickets found.")
+        return
+
+    embed = discord.Embed(title="Support Tickets", color=discord.Color.orange())
+
+    for ticket in open_tickets:
+        embed.add_field(
+            name=f"Ticket #{ticket.id} (Open)",
+            value=f"Started by: {ticket.involved_players.split(',')[0]}\nAdded users: {', '.join(ticket.involved_players.split(',')[1:])}",
+            inline=False,
+        )
+
+    for ticket in claimed_tickets:
+        embed.add_field(
+            name=f"Ticket #{ticket.id} (Claimed)",
+            value=f"Started by: {ticket.involved_players.split(',')[0]}\nAdded users: {', '.join(ticket.involved_players.split(',')[1:])}\nClaimed by: {ticket.involved_staff.split(',')[0]}",
+            inline=False,
+        )
+
+    await interaction.response.send_message(embed=embed)
+
 
 
 # Will be removed with final version
