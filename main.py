@@ -1,53 +1,20 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import configparser
 import sql_interface as sql
-import random
 import ui as bot_ui
 from buttons import Buttons, ButtonOpen
 import json_parsing as json
+from configmanager import database_config_manager as db_cfm
+from bot_manager import *
 
-cfg = configparser.ConfigParser()
-cfg.read("config.ini")
-TOKEN = cfg["SECRET"]["token"]
-
-# TODO: LOAD FROM CONFIG!!!!!!!!!!!!!
-TABLE_NAME = "players"
-WEBHOOK_CHANNEL = "bot_ingest"
-STAFF_ROLE = "Staff"
-
-
-class Bot(discord.Client):
-    def __init__(self, intents):
-        super().__init__(intents=intents)
-        # You can alternatively use ! as a command prefix instead of slash commands
-        # Trying to fix as it sometimes does not work
-
-    async def on_ready(self):
-        print(f"Logged in as {self.user}!")
-        # Since the sync command doesnt wanna work, fuck it
-        await tree.sync()
-
-    async def on_message(self, message):
-        print(
-            f"Message recieved in #{message.channel} from {message.author}: {message.content}"
-        )
-        # Weird issue, ephemeral messages throw an AttributeError here
-        # Copy paste:
-        # AttributeError: 'DMChannel' object has no attribute 'name'
-        if message.channel.name == WEBHOOK_CHANNEL:
-            message_json = json.message(message)
-
-
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-
-bot = Bot(intents)
-tree = app_commands.CommandTree(bot)
-# Command to sync commands
-# Aye dawg I heard you liked commands
+CONFIG_FILENAME = None
+CFM = db_cfm(filename=CONFIG_FILENAME)
+TOKEN = CFM.cfg["BOT"]["token"]
+TABLE_NAME = CFM.cfg["DATABASE"]["table"]
+WEBHOOK_CHANNEL = CFM.cfg["BOT"]["ingest_channel"]
+INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
+STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 
 
 # This command isn't working, added sync back to startup for now
@@ -74,11 +41,29 @@ async def run_setup(interaction: discord.Interaction):
         description="Click the button below to start a new ticket.",
         color=discord.Color.blue(),
     )
+    # Create the "Tickets" category if it doesn't exist
+    ticket_category = discord.utils.get(interaction.guild.categories, name="Tickets")
+    if not ticket_category:
+        ticket_category = await interaction.guild.create_category("Tickets")
 
-    ticket_category = await interaction.guild.create_category("Tickets")
-    ticket_channel = await interaction.guild.create_text_channel(
-        "create-a-ticket", category=ticket_category
+    # Create the "Mineticket Feed" channel within the "Tickets" category if it doesn't exist
+    mineticket_feed_channel = discord.utils.get(
+        ticket_category.channels, name="Mineticket Feed"
     )
+    if not mineticket_feed_channel:
+        mineticket_feed_channel = await interaction.guild.create_text_channel(
+            "Mineticket Feed", category=ticket_category
+        )
+
+    # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
+    ticket_channel = discord.utils.get(ticket_category.channels, name="create-a-ticket")
+    if not ticket_channel:
+        ticket_channel = await interaction.guild.create_text_channel(
+            "create-a-ticket", category=ticket_category
+        )
+
+    table = sql.Table(config=CFM.filename)
+    table.push()
     # Create a Buttons instance via buttons.py
     buttons = Buttons()
     # Add button
@@ -90,162 +75,27 @@ async def run_setup(interaction: discord.Interaction):
 
     # Send confirmation
     await interaction.response.send_message(
-        "Setup complete! The button is now available in the #tickets channel."
+        "Setup complete! The button is now available in the #create-a-ticket channel."
     )
 
 
 @tree.command(name="open_ticket", description="Opens a ticket")
 async def open_ticket(interaction: discord.Interaction):
-    # Create a new channel named "ticket-{user_id}"
-    # Need to figure a new way to do this as this was a temp solve
-
-    # Make a tickets "folder" using Categories
-    # I'm thinking we move this to setup so we only need to do this once.
-    tickets_category = discord.utils.get(interaction.guild.categories, name="Tickets")
-
-    # Polls database and gets the next ID
-    ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, True)) + 1
-
-    # Grab player using function from sql_interface
-    player = sql.player_from_interaction(interaction)
-
-    # Create the ticket in sql
-    ticket = sql.TableEntry(
-        players=str(player),
-        staff="",
-        message=f"Ticket #{ticket_id} created by {interaction.user.mention}!",
-        status="open",
-        table=TABLE_NAME,
-    )
-
-    # Push it!
-    ticket.push()
-
-    # TODO:
-    # Modify these overwrites when new player is added
-    overwrites = {
-        interaction.guild.default_role: discord.PermissionOverwrite(
-            read_messages=False, send_messages=False
-        ),
-        interaction.user: discord.PermissionOverwrite(
-            read_messages=True, send_messages=True
-        ),
-    }
-
-    ticket_channel_name = f"ticket-{ticket_id}"
-    ticket_channel = await interaction.guild.create_text_channel(
-        ticket_channel_name, category=tickets_category, overwrites=overwrites
-    )
-
-    # Send a message in the new channel
-    # TODO - add a channel link in the text
-    embed = discord.Embed(
-        title="Ticket created!",
-        description=f"Ticket #{ticket_id} created by {interaction.user.mention}!",
-        color=discord.Color.blue(),
-    )
-    await ticket_channel.send(embed=embed, view=ButtonOpen())
-
-    # Reply to the user in the original channel
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-
+    await create_ticket_helper(interaction)
 
 # May wanna rename commands to be easier to type
 # Like just claim instead of claim_ticket
 @tree.command(
     name="claim_ticket", description="Claim a support ticket as a staff member"
 )
-async def claim_ticket(interaction: discord.Interaction):
-    # Check if in ticket channel
-    if interaction.channel.category and interaction.channel.category.name == "Tickets":
-        # Check role, ex staff
-        staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE)
-
-        if staff_role and staff_role in interaction.user.roles:
-            # Grab ticket ID from the channel name
-            try:
-                ticket_id = int(interaction.channel.name.split("-")[1])
-            except ValueError:
-                print(
-                    f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
-                )
-                interaction.response.send_message(
-                    "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error."
-                )
-                return
-
-            staff_member = sql.player_from_interaction(interaction)
-            # Update database logic here
-            entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
-
-            if len(entry.involved_staff) > 0:
-                staff_name = entry.involved_staff.split(",")[0]
-                interaction.response.send_message(
-                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
-                    ephemeral=True,
-                )
-                return
-
-            entry.involved_staff = str(staff_member)
-            entry.status = "claimed"
-            entry.update()
-            await interaction.response.send_message(
-                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}."
-            )
-
-        else:
-            # Non-staff reply
-            await interaction.response.send_message(
-                f"You need the {STAFF_ROLE} role to claim a support ticket.",
-                ephemeral=True,
-            )
-
-    else:
-        # Non-ticket channel reply
-        await interaction.response.send_message(
-            "This command can only be used in a ticket channel.", ephemeral=True
-        )
-
+async def claim_ticket(interaction: discord.Interaction, ticket_num:int=None):
+    
+    await claim_ticket_helper(interaction, ticket_num)
 
 @tree.command(name="close_ticket", description="Close the current ticket")
-async def close_ticket(interaction: discord.Interaction):
-    # Check if in a ticket channel
-    if interaction.channel.category and interaction.channel.category.name == "Tickets":
-        # Grab ticket ID from the channel name
-        try:
-            ticket_id = int(interaction.channel.name.split("-")[1])
-        except ValueError:
-            print(f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!")
-            interaction.response.send_message(
-                "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error."
-            )
-            return
-        # Archive command here
+async def close_ticket(interaction: discord.Interaction, ticket_num:int=None):
 
-        # await interaction.channel.delete()
-        # Notify channel is closed, dont delete yet
-        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
-        entry.status = "closed"
-
-        curr_overwrites = interaction.channel.overwrites
-        keys = list(curr_overwrites.keys())
-        for key in keys[1:]:
-            print(f"MEMBER ID: {key.id}")
-            member = bot.get_user(int(key.id))
-            await interaction.channel.set_permissions(
-                member, send_messages=False, read_messages=True
-            )
-        entry.update()
-        await interaction.response.send_message(
-            f" Ticket #{ticket_id} has been closed."
-        )
-
-    else:
-        # Catch non-ticket channels
-        await interaction.message.reply(
-            "This command can only be used in a ticket channel."
-        )
-
+    await close_ticket_helper(interaction, ticket_num)
 
 # Uselsss function
 @tree.command(name="list_tickets", description="List all open support tickets")
@@ -292,6 +142,7 @@ async def list_tickets(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
+
 # Will be removed with final version
 @tree.command(
     name="debug",
@@ -334,6 +185,8 @@ async def debug(interaction: discord.Interaction, text: str):
             )
         else:
             await interaction.channel.send("Whoopsie doo")
+
+
 
 
 bot.run(token=TOKEN)
