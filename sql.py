@@ -349,8 +349,8 @@ class SQLManager:
                 conn.close()
 
     # Fetches the entry with the highest ID, presumably the most recently entered ticket
-    # Returns a list containing each item in the row
-    def get_most_recent_entry(self, table: str, only_id=False) -> list:
+    # Returns a list containing each item in the row, or just the entry ID
+    def get_most_recent_entry(self, table: str, only_id=False):
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
         sql = f"SELECT * FROM {safe_table} ORDER BY id DESC LIMIT 1"

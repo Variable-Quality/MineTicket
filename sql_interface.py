@@ -190,7 +190,7 @@ def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
 # Allows access to the function in sql.py of the same name
 # TODO:
 # Pull entry into a TableEntry object rather than just a list
-def get_most_recent_entry(table, only_id=False) -> list:
+def get_most_recent_entry(table, only_id=False):
     manager = SQLManager()
     entry = manager.get_most_recent_entry(table, only_id)
     return entry
