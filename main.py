@@ -3,18 +3,10 @@ from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
 import ui as bot_ui
-from buttons import Buttons, ButtonOpen
+from buttons import *
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
-
-CONFIG_FILENAME = None
-CFM = db_cfm(filename=CONFIG_FILENAME)
-TOKEN = CFM.cfg["BOT"]["token"]
-TABLE_NAME = CFM.cfg["DATABASE"]["table"]
-WEBHOOK_CHANNEL = CFM.cfg["BOT"]["ingest_channel"]
-INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
-STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 
 
 # This command isn't working, added sync back to startup for now
@@ -169,15 +161,15 @@ async def debug(interaction: discord.Interaction, text: str):
                 color=discord.Color.blue(),
             )
             # Create a Buttons instance via buttons.py
-            buttons = Buttons()
+            #buttons = Buttons()
             # Add button
-            buttons.add_item(
-                discord.ui.Button(
-                    style=discord.ButtonStyle.primary, label="Start A Ticket"
-                )
-            )
+            #buttons.add_item(
+            #    discord.ui.Button(
+            #        style=discord.ButtonStyle.primary, label="Start A Ticket"
+            #    )
+            #)
             # Send message with button
-            await interaction.channel.send(embed=embed, view=buttons)
+            await interaction.channel.send(embed=embed)
 
             # Send confirmation
             await interaction.channel.send(
@@ -185,6 +177,9 @@ async def debug(interaction: discord.Interaction, text: str):
             )
         else:
             await interaction.channel.send("Whoopsie doo")
+
+    if text == "button":
+        await interaction.response.send_message("I'm a button message!", view=ButtonOpen(custom_id=7))
 
 
 

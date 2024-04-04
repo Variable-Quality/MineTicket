@@ -106,8 +106,9 @@ async def create_ticket_helper(interaction: discord.Interaction):
 
     # Push it!
     ticket.push()
+    await interaction.response.send_message(f"Ticket {ticket_id} has been created!", ephemeral=True)
 
-async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None):
+async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
     # TODO:
     # Move this to be able to work in a button
     # That way we wont need to check for the category or anything since the button will show up where we want it to
@@ -137,11 +138,11 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None)
                     "Please enter a valid ticket number.", ephemeral=True
                     )
                 return
-        staff_member = sql.player_from_interaction(interaction)
+        staff_member = interaction.user.id
         # Update database logic here
         entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
         if len(entry.involved_staff_discord) > 0:
-            staff_name = entry.involved_staff_discord.split(",")[0]
+            staff_name = bot.get_user(staff_member).name
             await interaction.response.send_message(
                 f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
                 ephemeral=True,
@@ -154,6 +155,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None)
         await interaction.response.send_message(
             f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
             ephemeral=False,
+            view=view
         )
     else:
         # Non-staff reply
