@@ -4,6 +4,7 @@ from discord import app_commands
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 import sql_interface as sql
+from buttons import ButtonOpen, ButtonClaimed, ButtonClosed
 
 CONFIG_FILENAME = None
 CFM = db_cfm(filename=CONFIG_FILENAME)
@@ -108,7 +109,13 @@ async def create_ticket_helper(interaction: discord.Interaction):
 
     # Push it!
     ticket.push()
-    await interaction.response.send_message(f"Ticket {ticket_id} has been created!", ephemeral=True)
+    await interaction.response.send_message(f"Ticket {ticket_id} has been created!", ephemeral=True, delete_after=5)
+    embed = discord.Embed(
+        title=f"Ticket {ticket_id}",
+        description=f"User: {interaction.user.name}\nDiscord ID: {interaction.user.id}\nMinecraft UUID: {ticket.involved_players_minecraft}\nDescription: {ticket.message}",
+        color=discord.Color.green()
+    )
+    await staff_channel.send(embed=embed, view=ButtonOpen())
 
 async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
     # TODO:
