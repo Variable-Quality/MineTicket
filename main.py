@@ -3,10 +3,10 @@ from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
 import ui as bot_ui
-from buttons import *
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
+from helpers import *
 
 
 # This command isn't working, added sync back to startup for now
