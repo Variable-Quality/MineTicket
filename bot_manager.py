@@ -132,11 +132,16 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
             try:
                 ticket_id = int(interaction.channel.name.split("-")[1])
             except ValueError:
-                print(
-                    f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
+                embed = discord.Embed(
+                    print(
+                        f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
+                    ),
+                    embed=embed
                 )
                 interaction.response.send_message(
-                    "I'm sorry, I cannot close the ticket as I cannot find the ID. Please report this error.", ephemeral=True
+                    embed = discord.Embed(
+                        "I'm sorry, I cannot close the ticket as I cannot find the ID. Please report this error.", ephemeral=True, embed=embed
+                    )
                 )
                 return
         else:
@@ -146,10 +151,11 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                 embed = discord.Embed(
                     title="Invalid Ticket ID",
                     description=f"Ticket ID {ticket_id} is not a valid ID. Please retry with a valid ID.",
-                    color= discord.Color.blue()
+                    color= discord.Color.blue(),
+                    embed=embed
                 )
                 interaction.response.send_message(
-                    embed=embed, ephemeral=True
+                    ephemeral=True
                     )
                 return
         staff_member = interaction.user.id
@@ -158,8 +164,10 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         if len(entry.involved_staff_discord) > 0:
             staff_name = bot.get_user(staff_member).name
             await interaction.response.send_message(
+                embed = discord.Embed(
                 f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
-                ephemeral=True,
+                ephemeral=True, embed=embed
+                )
             )
             return
         entry.involved_staff_discord = str(staff_member)
@@ -167,15 +175,20 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         entry.update_dict()
         entry.update()
         await interaction.response.send_message(
-            f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
-            ephemeral=False,
-            view=view
+            embed = discord.Embed(
+                f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
+                ephemeral=False,
+                embed=embed,
+                view=view
+            )
         )
     else:
         # Non-staff reply
         await interaction.response.send_message(
-            f"You need the {STAFF_ROLE} role to claim a support ticket.",
-            ephemeral=True,
+            embed = discord.Embed(
+                f"You need the {STAFF_ROLE} role to claim a support ticket.",
+                ephemeral=True, embed=embed
+            )
         )
 
 async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None):
@@ -185,17 +198,23 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
         try:
             ticket_id = int(interaction.channel.name.split("-")[1])
         except ValueError:
-            print(f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!")
+            embed = discord.Embed(
+                print(f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"), embed=embed
+            )
             interaction.response.send_message(
-                "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error.", ephemeral=True
+                embed = discord.Embed(
+                    "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error.", ephemeral=True, embed=embed
+                )
             )
             return
     else:
         try:
             ticket_id = int(ticket_num)
         except ValueError:
-            interaction.response.send_message(
-                "Please enter a valid ticket ID.", ephemeral=True
+            embed = discord.Embed(
+                interaction.response.send_message(
+                    "Please enter a valid ticket ID.", ephemeral=True, embed=embed
+                )
             )
             return
     # Archive command here
@@ -213,7 +232,9 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
     entry.update_dict()
     entry.update()
     await interaction.response.send_message(
-        f" Ticket #{ticket_id} has been closed."
+        embed = discord.Embed(
+            f" Ticket #{ticket_id} has been closed.", embed=embed
+        )
     )
 
 
