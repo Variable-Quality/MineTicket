@@ -9,23 +9,26 @@ from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
 async def create_channel_helper(interaction: discord.Interaction, ticket_id):
+    print("Creating ticket!")
+    print(interaction.guild.id)
     sql_entry = sql.fetch_by_id(int(ticket_id))
     players = sql_entry.involved_players_discord.split(",")
+    overwrites = {
+    interaction.guild.default_role: discord.PermissionOverwrite(
+        read_messages=False, send_messages=False
+    ),
+    interaction.user: discord.PermissionOverwrite(
+        read_messages=True, send_messages=True
+    )
+    }
     for player in players:
-        player_discord = bot.get_user(player)
+        #TODO:
+        # Update players with access whenever a new user is added to the ticket
+        player_discord = await bot.fetch_user(player)
+
         overwrites[player_discord] = discord.PermissionOverwrite(
             read_messages=True, send_messages=True
         )
-
-    overwrites = {
-        interaction.guild.default_role: discord.PermissionOverwrite(
-            read_messages=False, send_messages=False
-        ),
-        interaction.user: discord.PermissionOverwrite(
-            read_messages=True, send_messages=True
-        ),
-    }
-
 
     tickets_category = discord.utils.get(interaction.guild.categories, name="Tickets")
     ticket_channel_name = f"ticket-{ticket_id}"
@@ -70,7 +73,7 @@ async def create_ticket_helper(interaction: discord.Interaction):
 
     # Push it!
     ticket.push()
-    await interaction.response.send_message(f"Ticket {ticket_id} has been created!", ephemeral=True, delete_after=5)
+    await interaction.response.send_message(f"Ticket {ticket_id} has been created!", ephemeral=True, delete_after=30)
     embed = discord.Embed(
         title=f"Ticket {ticket_id}",
         description=f"User: {interaction.user.name}\nDiscord ID: {interaction.user.id}\nMinecraft UUID: {ticket.involved_players_minecraft}\nDescription: {ticket.message}",
@@ -292,12 +295,14 @@ class ButtonClaimed(discord.ui.View):
         )
         await interaction.response.send_message(embed=embed, view=ButtonClosed())
 
+    # TODO:
+    # Move this button into the actual 
     @discord.ui.button(label="Add User", style=discord.ButtonStyle.green)
     async def add_user_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         ticket_channel = interaction.channel
-        ticket_id = int(ticket_channel.name.split("-")[1])
+        ticket_id = self.ticket_id
 
         def check(m):
             return m.channel == interaction.channel
@@ -318,6 +323,7 @@ class ButtonClaimed(discord.ui.View):
 
         user_id = msg.content.strip("<@!>")
         try:
+            # Verifies the user is a real user
             user = await interaction.guild.fetch_member(int(user_id))
         except discord.NotFound:
             await interaction.followup.send(
@@ -326,13 +332,17 @@ class ButtonClaimed(discord.ui.View):
             return
 
         entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
-        entry.involved_players += f",{str(user)}"
+        entry.involved_players_discord += f",{user_id}"
         entry.update()
 
         await ticket_channel.set_permissions(
             user, read_messages=True, send_messages=True
         )
         await interaction.followup.send(f"{user.mention} has been added to the ticket.")
+
+    @discord.ui.button(label="Create Text Channel", style=discord.ButtonStyle.blurple)
+    async def create_channel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await create_channel_helper(interaction, self.ticket_id)
 
 
 class ButtonClosed(discord.ui.View):

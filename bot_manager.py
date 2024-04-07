@@ -49,6 +49,7 @@ class Bot(discord.Client):
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.guilds = True
 intents.members = True
 
 bot = Bot(intents)
