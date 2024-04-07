@@ -9,9 +9,11 @@ CONFIG_FILENAME = None
 CFM = db_cfm(filename=CONFIG_FILENAME)
 TOKEN = CFM.cfg["BOT"]["token"]
 TABLE_NAME = CFM.cfg["DATABASE"]["table"]
-WEBHOOK_CHANNEL = CFM.cfg["BOT"]["ingest_channel"]
 INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
+OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
+#TODO:
+# Add Ticket Channel on Setup
 
 class Bot(discord.Client):
     def __init__(self, intents):
@@ -32,14 +34,14 @@ class Bot(discord.Client):
             print("No guilds found. JSON parsing functionality will not be available.")
 
     async def on_message(self, message):
+        if type(message.channel) is discord.DMChannel:
+            return
         print(
             f"Message recieved in #{message.channel} from {message.author}: {message.content}"
         )
         # Weird issue, ephemeral messages throw an AttributeError here
         # Copy paste:
         # AttributeError: 'DMChannel' object has no attribute 'name'
-        if message.channel.name == WEBHOOK_CHANNEL:
-            message_json = json.message(message)
         if message.channel.name == INTAKE_CHANNEL and self.json_parser is not None:
             # Call the JSON parsing function
             await self.json_parser.parse_json_message(message)
@@ -85,7 +87,7 @@ async def create_ticket_helper(interaction: discord.Interaction):
     # Need to figure a new way to do this as this was a temp solve
     # Polls database and gets the next ID
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, only_id=True)) + 1
-
+    staff_channel = discord.utils.get(interaction.guild.channels, name=OPEN_TICKET_CHANNEL)
     # Hardcoded Dict, can't think of a way to load this from a config file
     table_dict = {
         "id": ticket_id,
@@ -127,15 +129,20 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                     f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
                 )
                 interaction.response.send_message(
-                    "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error.", ephemeral=True
+                    "I'm sorry, I cannot close the ticket as I cannot find the ID. Please report this error.", ephemeral=True
                 )
                 return
         else:
             try:
                 ticket_id = int(ticket_num)
             except ValueError:
+                embed = discord.Embed(
+                    title="Invalid Ticket ID",
+                    description=f"Ticket ID {ticket_id} is not a valid ID. Please retry with a valid ID.",
+                    color= discord.Color.blue()
+                )
                 interaction.response.send_message(
-                    "Please enter a valid ticket number.", ephemeral=True
+                    embed=embed, ephemeral=True
                     )
                 return
         staff_member = interaction.user.id

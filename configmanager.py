@@ -88,8 +88,8 @@ class database_config_manager:
         self.cfg["BOT"] = {
             "token": token_loader["SECRET"]["token"],
             "staff_role": "Staff",
-            "ingest_channel": "bot_ingest",
             "intake_channel": "intake",
+            "staff_channel": "open-tickets"
         }
 
         self.filename = f"{CONFIG_LOCATION}/default.ini"

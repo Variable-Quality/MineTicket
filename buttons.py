@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
@@ -63,17 +64,13 @@ class ButtonClaimed(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         # Logic for closing the ticket
-        ticket_channel = interaction.channel
         ticket_id = self.ticket_id
 
         entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
         # Check if the user is the claiming staff member or an added staff member
 
-        staff_data = entry.involved_staff.split(",")
-        staff_id = staff_data[1]
-        if str(interaction.user.id) != staff_id and str(
-            interaction.user.id
-        ) not in entry.involved_players.split(","):
+        staff_id = entry.involved_staff
+        if str(interaction.user.id) != staff_id and str(interaction.user.id) not in entry.involved_players.split(","):
             embed = discord.Embed(
                 title="Unauthorized",
                 description=f"You do not have permission to close this ticket.",
@@ -107,7 +104,7 @@ class ButtonClaimed(discord.ui.View):
         ticket_id = int(ticket_channel.name.split("-")[1])
 
         def check(m):
-            return m.author == interaction.user and m.channel == interaction.channel
+            return m.channel == interaction.channel
 
         await interaction.response.send_message(
             "Please enter the user's ID or mention:", ephemeral=True
