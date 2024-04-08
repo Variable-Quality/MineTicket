@@ -14,7 +14,11 @@ STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
 #TODO:
 # Add Ticket Channel on Setup
-
+# ADD PERSISTENCE
+# HOLY FUCK ADD PERSISTENCE
+# WHY IS PERSISTENCE A FUCKING THING
+# https://github.com/Rapptz/discord.py/blob/master/examples/views/persistent.py
+# https://stackoverflow.com/questions/73355341/discord-py-buttons-on-message-dont-work-after-bot-restarts
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
@@ -34,14 +38,12 @@ class Bot(discord.Client):
             print("No guilds found. JSON parsing functionality will not be available.")
 
     async def on_message(self, message):
+        # Fix for ephemeral messages throwing errors
         if type(message.channel) is discord.DMChannel:
             return
         print(
             f"Message recieved in #{message.channel} from {message.author}: {message.content}"
         )
-        # Weird issue, ephemeral messages throw an AttributeError here
-        # Copy paste:
-        # AttributeError: 'DMChannel' object has no attribute 'name'
         if message.channel.name == INTAKE_CHANNEL and self.json_parser is not None:
             # Call the JSON parsing function
             await self.json_parser.parse_json_message(message)

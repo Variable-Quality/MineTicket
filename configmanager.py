@@ -88,7 +88,7 @@ class database_config_manager:
         self.cfg["BOT"] = {
             "token": token_loader["SECRET"]["token"],
             "staff_role": "Staff",
-            "intake_channel": "intake",
+            "intake_channel": "mineticket-feed",
             "staff_channel": "open-tickets"
         }
 

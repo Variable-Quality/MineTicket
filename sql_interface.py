@@ -41,9 +41,9 @@ class Table:
     # Only used when the table is not yet in the DB
     def push(self):
         manager = SQLManager()
-        data = []
+        data = {}
         for i in range(0, len(self.columns) - 1):
-            data.append((self.columns[i], self.datatypes[i]))
+            data[self.columns[i]] = self.datatypes[i]
 
         manager.create_table(self.name, data)
 
