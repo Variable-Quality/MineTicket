@@ -514,5 +514,5 @@ class TicketOpen(discord.ui.View):
             color=discord.Color.green()
         )
         await interaction.channel.send(
-            embed=embed, ephemeral=True
+            embed=embed
         )
