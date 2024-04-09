@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
+from persistent_views import PersistentViews
 import sql_interface as sql
 
 CONFIG_FILENAME = None
@@ -12,13 +13,15 @@ TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
-#TODO:
+# TODO:
 # Add Ticket Channel on Setup
 # ADD PERSISTENCE
 # HOLY FUCK ADD PERSISTENCE
 # WHY IS PERSISTENCE A FUCKING THING
 # https://github.com/Rapptz/discord.py/blob/master/examples/views/persistent.py
 # https://stackoverflow.com/questions/73355341/discord-py-buttons-on-message-dont-work-after-bot-restarts
+
+
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
@@ -30,6 +33,7 @@ class Bot(discord.Client):
         print(f"Logged in as {self.user}!")
         # Since the sync command doesnt wanna work, fuck it
         await tree.sync()
+        bot.add_view(PersistentViews())
 
         # Initialize the ParseJSON instance inside on_ready
         if self.guilds:

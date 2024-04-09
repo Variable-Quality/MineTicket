@@ -34,7 +34,8 @@ async def run_setup(interaction: discord.Interaction):
         color=discord.Color.blue(),
     )
     # Create the "Tickets" category if it doesn't exist
-    ticket_category = discord.utils.get(interaction.guild.categories, name="Tickets")
+    ticket_category = discord.utils.get(
+        interaction.guild.categories, name="Tickets")
     if not ticket_category:
         ticket_category = await interaction.guild.create_category("Tickets")
 
@@ -48,16 +49,18 @@ async def run_setup(interaction: discord.Interaction):
         )
 
     # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
-    ticket_channel = discord.utils.get(ticket_category.channels, name="create-a-ticket")
+    ticket_channel = discord.utils.get(
+        ticket_category.channels, name="create-a-ticket")
     if not ticket_channel:
         ticket_channel = await interaction.guild.create_text_channel(
             "create-a-ticket", category=ticket_category
         )
 
-    staff_channel = discord.utils.get(ticket_category.channels, name=OPEN_TICKET_CHANNEL)
+    staff_channel = discord.utils.get(
+        ticket_category.channels, name=OPEN_TICKET_CHANNEL)
     if not staff_channel:
         staff_channel = await interaction.guild.create_text_channel(
-            #NOTE:
+            # NOTE:
             # Staff channel may want to be elsewhere
             # But if I have to load one more thing from a config file I might kill myself
             OPEN_TICKET_CHANNEL, category=ticket_category
@@ -65,7 +68,7 @@ async def run_setup(interaction: discord.Interaction):
     table = sql.Table(config=CONFIG_FILENAME)
     table.push()
     # Create a Buttons instance via helpers.py
-    await ticket_channel.send(embed=embed, view=TicketOpen())
+    await ticket_channel.send(embed=embed, view=PersistentViews())
 
     # Send confirmation
     await interaction.response.send_message(
@@ -80,19 +83,24 @@ async def open_ticket(interaction: discord.Interaction):
 
 # May wanna rename commands to be easier to type
 # Like just claim instead of claim_ticket
+
+
 @tree.command(
     name="claim_ticket", description="Claim a support ticket as a staff member"
 )
-async def claim_ticket(interaction: discord.Interaction, ticket_num:int=None):
-    
+async def claim_ticket(interaction: discord.Interaction, ticket_num: int = None):
+
     await claim_ticket_helper(interaction, ticket_num)
 
+
 @tree.command(name="close_ticket", description="Close the current ticket")
-async def close_ticket(interaction: discord.Interaction, ticket_num:int=None):
+async def close_ticket(interaction: discord.Interaction, ticket_num: int = None):
 
     await close_ticket_helper(interaction, ticket_num)
 
 # Uselsss function
+
+
 @tree.command(name="list_tickets", description="List all open support tickets")
 async def list_tickets(interaction: discord.Interaction):
     """# Grab live tickets from DB
@@ -118,7 +126,8 @@ async def list_tickets(interaction: discord.Interaction):
         await interaction.response.send_message("No open or claimed tickets found.")
         return
 
-    embed = discord.Embed(title="Support Tickets", color=discord.Color.orange())
+    embed = discord.Embed(title="Support Tickets",
+                          color=discord.Color.orange())
 
     for ticket in open_tickets:
         embed.add_field(
@@ -135,7 +144,6 @@ async def list_tickets(interaction: discord.Interaction):
         )
 
     await interaction.response.send_message(embed=embed)
-
 
 
 # Will be removed with final version
@@ -164,13 +172,13 @@ async def debug(interaction: discord.Interaction, text: str):
                 color=discord.Color.blue(),
             )
             # Create a Buttons instance via buttons.py
-            #buttons = Buttons()
+            # buttons = Buttons()
             # Add button
-            #buttons.add_item(
+            # buttons.add_item(
             #    discord.ui.Button(
             #        style=discord.ButtonStyle.primary, label="Start A Ticket"
             #    )
-            #)
+            # )
             # Send message with button
             await interaction.channel.send(embed=embed)
 
@@ -183,8 +191,6 @@ async def debug(interaction: discord.Interaction, text: str):
 
     if text == "button":
         await interaction.response.send_message("I'm a button message!", view=ButtonOpen(custom_id=7))
-
-
 
 
 bot.run(token=TOKEN)
