@@ -110,7 +110,8 @@ class ParseJSON:
                 description=message,
                 color=discord.Color.blue(),
             )
-            embed.add_field(name="Created by", value=user.mention, inline=False)
+            embed.add_field(name="Created by",
+                            value=user.mention, inline=False)
             embed.add_field(name="Status", value="Open", inline=False)
 
             buttons = ButtonOpen(custom_id=ticket_id)

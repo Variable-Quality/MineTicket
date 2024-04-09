@@ -8,28 +8,29 @@ import ui
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
+
 async def create_channel_helper(interaction: discord.Interaction, ticket_id):
     print("Creating ticket!")
     print(interaction.guild.id)
     sql_entry = sql.fetch_by_id(int(ticket_id))
     players = sql_entry.involved_players_discord.split(",")
     overwrites = {
-    interaction.guild.default_role: discord.PermissionOverwrite(
-        read_messages=False, send_messages=False
-    ),
-    interaction.user: discord.PermissionOverwrite(
-        read_messages=True, send_messages=True
-    )
+        interaction.guild.default_role: discord.PermissionOverwrite(
+            read_messages=False, send_messages=False
+        ),
+        interaction.user: discord.PermissionOverwrite(
+            read_messages=True, send_messages=True
+        )
     }
     pnames = []
     for player in players:
-        #TODO:
+        # TODO:
         # Update players with access whenever a new user is added to the ticket
-        #NOTE:
+        # NOTE:
         # fetch_user is an api call and should be used sparingly
         # for whatever reason, get_user only reaches into the bot cache, which at the moment doesnt seem to contain member info
         # This also means that it can be used to find player data on players not in the server
-        # So use with caution 
+        # So use with caution
         player_discord = await bot.fetch_user(player)
         pnames.append(player_discord.name)
 
@@ -37,7 +38,8 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
             read_messages=True, send_messages=True
         )
 
-    tickets_category = discord.utils.get(interaction.guild.categories, name="Tickets")
+    tickets_category = discord.utils.get(
+        interaction.guild.categories, name="Tickets")
     ticket_channel_name = f"ticket-{ticket_id}"
     ticket_channel = await interaction.guild.create_text_channel(
         ticket_channel_name, category=tickets_category, overwrites=overwrites
@@ -64,12 +66,14 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
         ephemeral=True,
     )
 
+
 async def create_ticket_helper(interaction: discord.Interaction):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
     # Polls database and gets the next ID
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, only_id=True)) + 1
-    staff_channel = discord.utils.get(interaction.guild.channels, name=OPEN_TICKET_CHANNEL)
+    staff_channel = discord.utils.get(
+        interaction.guild.channels, name=OPEN_TICKET_CHANNEL)
     # Hardcoded Dict, can't think of a way to load this from a config file
     table_dict = {
         "id": ticket_id,
@@ -98,6 +102,7 @@ async def create_ticket_helper(interaction: discord.Interaction):
     )
     await staff_channel.send(embed=embed, view=ButtonOpen(custom_id=ticket_id))
 
+
 async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
     # TODO:
     # Move this to be able to work in a button
@@ -117,7 +122,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                     f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"
                 )
                 await interaction.response.send_message(
-                    embed = discord.Embed(
+                    embed=discord.Embed(
                         description="I'm sorry, I cannot close the ticket as I cannot find the ID. Please report this error."
                     ),
                     ephemeral=True
@@ -130,12 +135,12 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                 embed = discord.Embed(
                     title="Invalid Ticket ID",
                     description=f"Ticket ID {ticket_id} is not a valid ID. Please retry with a valid ID.",
-                    color= discord.Color.blue(),
+                    color=discord.Color.blue(),
                     embed=embed
                 )
                 await interaction.response.send_message(
                     ephemeral=True
-                    )
+                )
                 return
         staff_member = interaction.user.id
         # Update database logic here
@@ -143,9 +148,9 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         if len(entry.involved_staff_discord) > 0:
             staff_name = bot.get_user(staff_member).name
             await interaction.response.send_message(
-                embed = discord.Embed(
-                f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
-                ephemeral=True, embed=embed
+                embed=discord.Embed(
+                    f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
+                    ephemeral=True, embed=embed
                 )
             )
             return
@@ -154,7 +159,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         entry.update_dict()
         entry.update()
         await interaction.response.send_message(
-            embed = discord.Embed(
+            embed=discord.Embed(
                 title="Ticket claimed",
                 description=f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}."
             ),
@@ -164,11 +169,12 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
     else:
         # Non-staff reply
         await interaction.response.send_message(
-            embed = discord.Embed(
+            embed=discord.Embed(
                 f"You need the {STAFF_ROLE} role to claim a support ticket.",
                 ephemeral=True, embed=embed
             )
         )
+
 
 async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None):
 
@@ -181,7 +187,7 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
                 print(f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!"), embed=embed
             )
             interaction.response.send_message(
-                embed = discord.Embed(
+                embed=discord.Embed(
                     "I'm sorry, I cannot close the ticket as I cannot find the ID from the title. Please report this error.", ephemeral=True, embed=embed
                 )
             )
@@ -211,7 +217,7 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
     entry.update_dict()
     entry.update()
     await interaction.response.send_message(
-        embed = discord.Embed(
+        embed=discord.Embed(
             description=f"Ticket #{ticket_id} has been closed.",
             color=discord.Color.blue()
         )
@@ -247,14 +253,26 @@ class ButtonOpen(discord.ui.View):
     Claim button
     """
 
-    def __init__(self, *, timeout=180, custom_id=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, custom_id=None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
+        self.claim_button = discord.ui.Button(
+            label="Claim",
+            style=discord.ButtonStyle.green,
+            custom_id="ClaimButtonInButtonOpen"
+        )
+        self.add_item(self.claim_button)
+        self.add_item(self.claim_button_callback)
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green)
-    async def claimButton(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+    async def claim_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
+        # https://stackoverflow.com/questions/74426018/attributeerror-button-object-has-no-attribute-response
+        # We had a few attribute errors and this might be the right fix.
+        await interaction.message.delete()
+        await claim_ticket_helper(interaction, self.ticket_id, view=ButtonClaimed(custom_id=self.ticket_id))
+
+    async def claim_button_callback(self, interaction: discord.Interaction):
         # https://stackoverflow.com/questions/74426018/attributeerror-button-object-has-no-attribute-response
         # We had a few attribute errors and this might be the right fix.
         await interaction.message.delete()
@@ -271,13 +289,33 @@ class ButtonClaimed(discord.ui.View):
     Add staff button
     """
 
-    def __init__(self, *, timeout=180, custom_id:int=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, custom_id: int = None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
+        # close ticket
+        self.close_button = discord.ui.Button(
+            label="Close Ticket",
+            style=discord.ButtonStyle.red,
+            custom_id="CloseTicketInButtonClaimed"
+        )
+        self.add_item(self.close_button)
+        # add_user_button
+        self.add_user_button = discord.ui.Button(
+            label="Add User",
+            style=discord.ButtonStyle.green,
+            custom_id="AddUserInButtonClaimed"
+        )
+        self.add_item(self.add_user_button)
+        # create_channel_button
+        self.claim_button = discord.ui.Button(
+            label="Create Text Channel",
+            style=discord.ButtonStyle.blurple,
+            custom_id="CreateTxtInButtonClaimed"
+        )
+        self.add_item(self.create_channel_button)
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
     async def close_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
         # Logic for closing the ticket
         ticket_id = self.ticket_id
@@ -313,10 +351,9 @@ class ButtonClaimed(discord.ui.View):
         await interaction.response.send_message(embed=embed, view=ButtonClosed(ticket_id=ticket_id))
 
     # TODO:
-    # Move this button into the actual 
-    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green)
+    # Move this button into the actual
     async def add_user_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
         ticket_channel = interaction.channel
         ticket_id = self.ticket_id
@@ -357,19 +394,23 @@ class ButtonClaimed(discord.ui.View):
         )
         await interaction.followup.send(f"{user.mention} has been added to the ticket.")
 
-    @discord.ui.button(label="Create Text Channel", style=discord.ButtonStyle.blurple)
-    async def create_channel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def create_channel_button(self, interaction: discord.Interaction, button: discord.ui.Button, ):
         await create_channel_helper(interaction, self.ticket_id)
 
 
 class ButtonClosed(discord.ui.View):
-    def __init__(self, *, timeout=180, ticket_id):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, ticket_id):
+        super().__init__(timeout=None)
         self.ticket_id = ticket_id
+        self.reopen_button = discord.ui.Button(
+            label="Reopen Ticket",
+            style=discord.ButtonStyle.green,
+            custom_id="ReopenInButtonClosed"
+        )
+        self.add_item(self.reopen_button)
 
-    @discord.ui.button(label="Reopen Ticket", style=discord.ButtonStyle.green)
     async def reopen_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
         ticket_id = self.ticket_id
 
@@ -392,6 +433,7 @@ class ButtonClosed(discord.ui.View):
         )
         await interaction.response.send_message(embed=embed, view=ButtonClaimed(custom_id=ticket_id))
 
+
 class ButtonTicket(discord.ui.View):
     """
     What does this button class do?
@@ -402,13 +444,26 @@ class ButtonTicket(discord.ui.View):
     Add staff button
     """
 
-    def __init__(self, *, timeout=180, custom_id:int=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, custom_id: int = None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
+        # close_button
+        self.close_button = discord.ui.Button(
+            label="Close Ticket",
+            style=discord.ButtonStyle.red,
+            custom_id="CloseInButtonTicket"
+        )
+        self.add_item(self.close_button)
+        # add_user_button
+        self.add_user_button = discord.ui.Button(
+            label="Add User",
+            style=discord.ButtonStyle.green,
+            custom_id="AddInButtonTicket"
+        )
+        self.add_item(self.add_user_button)
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
     async def close_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
         # Logic for closing the ticket
         ticket_id = self.ticket_id
@@ -444,10 +499,9 @@ class ButtonTicket(discord.ui.View):
         await interaction.response.send_message(embed=embed, view=ButtonClosed(ticket_id=ticket_id))
 
     # TODO:
-    # Move this button into the actual 
-    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green)
+    # Move this button into the actual
     async def add_user_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
         ticket_channel = interaction.channel
         ticket_id = self.ticket_id
@@ -488,6 +542,7 @@ class ButtonTicket(discord.ui.View):
         )
         await interaction.followup.send(f"{user.mention} has been added to the ticket.")
 
+
 class TicketOpen(discord.ui.View):
     """
     What does this button class do?
@@ -497,22 +552,31 @@ class TicketOpen(discord.ui.View):
     Claim button
     """
 
-    def __init__(self, *, timeout=180, custom_id=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, custom_id=None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
+        self.claim_button = discord.ui.Button(
+            label="Create a Ticket",
+            style=discord.ButtonStyle.green,
+            custom_id="CreateInTicketOpen"
+        )
+        self.add_item(self.claim_button)
 
-    @discord.ui.button(label="Create a Ticket", style=discord.ButtonStyle.green)
-    async def claimButton(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+    async def claim_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button,
     ):
-        #TODO:
-        # Integrate GUI popup with this button
-        await create_ticket_helper(interaction)
-        embed = discord.Embed(
-            title="Ticket Created!",
-            description="A staff member will contact you shortly for further information.",
-            color=discord.Color.green()
-        )
-        await interaction.channel.send(
-            embed=embed
-        )
+        try:
+            # TODO:
+            # Integrate GUI popup with this button
+            await create_ticket_helper(interaction)
+            embed = discord.Embed(
+                title="Ticket Created!",
+                description="A staff member will contact you shortly for further information.",
+                color=discord.Color.green()
+            )
+            await interaction.channel.send(
+                embed=embed
+            )
+        except Exception as e:
+            print(f"Error in claimButton: {str(e)}")
+            await interaction.response.send_message("An error occurred while creating the ticket. Please try again later.", ephemeral=True)

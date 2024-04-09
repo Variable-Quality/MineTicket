@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord import app_commands
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
-from persistent_views import PersistentViews
 import sql_interface as sql
 
 CONFIG_FILENAME = None
@@ -24,7 +23,7 @@ OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
 
 class Bot(discord.Client):
     def __init__(self, intents):
-        super().__init__(intents=intents)
+        super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=intents)
         # You can alternatively use ! as a command prefix instead of slash commands
         # Trying to fix as it sometimes does not work
         self.json_parser = None
@@ -33,7 +32,6 @@ class Bot(discord.Client):
         print(f"Logged in as {self.user}!")
         # Since the sync command doesnt wanna work, fuck it
         await tree.sync()
-        bot.add_view(PersistentViews())
 
         # Initialize the ParseJSON instance inside on_ready
         if self.guilds:
@@ -52,6 +50,21 @@ class Bot(discord.Client):
             # Call the JSON parsing function
             await self.json_parser.parse_json_message(message)
 
+
+class PersistentViewBot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents().all()
+        super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=intents)
+
+    async def setup_hook(self) -> None:
+        # Register the button classes
+        self.add_view(ButtonOpen())
+        self.add_view(ButtonClaimed())
+        self.add_view(ButtonClosed())
+        self.add_view(TicketOpen())
+
+
+bot = PersistentViewBot()
 
 intents = discord.Intents.default()
 intents.message_content = True

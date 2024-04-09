@@ -68,7 +68,7 @@ async def run_setup(interaction: discord.Interaction):
     table = sql.Table(config=CONFIG_FILENAME)
     table.push()
     # Create a Buttons instance via helpers.py
-    await ticket_channel.send(embed=embed, view=PersistentViews())
+    await ticket_channel.send(embed=embed, view=TicketOpen())
 
     # Send confirmation
     await interaction.response.send_message(
@@ -171,15 +171,6 @@ async def debug(interaction: discord.Interaction, text: str):
                 description="Click the button below to start a new ticket.",
                 color=discord.Color.blue(),
             )
-            # Create a Buttons instance via buttons.py
-            # buttons = Buttons()
-            # Add button
-            # buttons.add_item(
-            #    discord.ui.Button(
-            #        style=discord.ButtonStyle.primary, label="Start A Ticket"
-            #    )
-            # )
-            # Send message with button
             await interaction.channel.send(embed=embed)
 
             # Send confirmation
