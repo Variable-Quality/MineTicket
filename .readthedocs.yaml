@@ -12,10 +12,6 @@ python:
     - requirements: docs/requirements.txt
     - method: pip
       path: .
-      extra_requirements:
-        - docs
-    - method: pip
-      path: another/package
 
 # Optional but recommended, declare the Python requirements required
 # to build your documentation
