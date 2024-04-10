@@ -5,7 +5,7 @@ build:
     python: "3.10"
   jobs:
     pre_install:
-      - apt install libmariadb3 libmariadb-dev
+      - sudo apt install libmariadb3 libmariadb-dev
 
 sphinx:
   configuration: docs/conf.py
