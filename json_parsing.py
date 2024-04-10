@@ -1,8 +1,8 @@
 import discord
-import json
+import json as pyjson
 import sql_interface as sql
 from configmanager import database_config_manager as db_cfm
-from buttons import *
+from helpers import *
 
 # Solomon/DJ - when you get to this point in the merge - We need the naming of the buttons to change into what they are *now* with the new stuff. THis was written for the old way of doing buttons.
 
@@ -36,7 +36,7 @@ class ParseJSON:
             None
         """
         try:
-            json_data = json.loads(message.content)
+            json_data = pyjson.loads(message.content)
             event = json_data.get("event")
 
             if event == "create":
@@ -59,7 +59,7 @@ class ParseJSON:
                 )
             else:
                 print(f"Unknown event type: {event}")
-        except json.JSONDecodeError:
+        except pyjson.JSONDecodeError:
             print(f"Invalid JSON format in message\n{message.content}")
 
     async def create_event(self, user_uuid, discord_id, message):
@@ -113,7 +113,7 @@ class ParseJSON:
             embed.add_field(name="Created by", value=user.mention, inline=False)
             embed.add_field(name="Status", value="Open", inline=False)
 
-            buttons = Buttons(timeout=None)
+            buttons = ButtonOpen(custom_id=ticket_id)
             await mineticket_feed_channel.send(embed=embed, view=buttons)
         except Exception as e:
             print(f"Error creating ticket: {str(e)}")

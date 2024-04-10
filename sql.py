@@ -189,7 +189,7 @@ class SQLManager:
 
         safe_values = []
         for value in values:
-            safe_values.append(re.sub(r"[^0-9A-Za-z ,|]", "", str(value)))
+            safe_values.append(re.sub(r"[^0-9A-Za-z ,|!?./()$%*@#&^<>;:]", "", str(value)))
 
         columns_string = "("
         index = 0
@@ -230,6 +230,7 @@ class SQLManager:
             temp_tuple = (re.sub(regex, "", key), re.sub(regex, "", table_data[key]))
             safe_table_data.append(temp_tuple)
         # Palmer/Art apprach (Sorry DJ)
+        # Fix is a fix is a fix, great work guys - DJ
         table_data_string = "(id SERIAL PRIMARY KEY, "
         for column, datatype in table_data.items():
             if column != "id":

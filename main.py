@@ -3,10 +3,10 @@ from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
 import ui as bot_ui
-from buttons import *
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
+from helpers import *
 
 
 # This command isn't working, added sync back to startup for now
@@ -29,7 +29,7 @@ async def sync(interaction: discord.Interaction):
 async def run_setup(interaction: discord.Interaction):
     # Check if the command is used in the correct channel
     embed = discord.Embed(
-        title="Want to start a ticket?",
+        title="Want to open a new ticket?",
         description="Click the button below to start a new ticket.",
         color=discord.Color.blue(),
     )
@@ -54,20 +54,23 @@ async def run_setup(interaction: discord.Interaction):
             "create-a-ticket", category=ticket_category
         )
 
-    table = sql.Table(config=CFM.filename)
+    staff_channel = discord.utils.get(ticket_category.channels, name=OPEN_TICKET_CHANNEL)
+    if not staff_channel:
+        staff_channel = await interaction.guild.create_text_channel(
+            #NOTE:
+            # Staff channel may want to be elsewhere
+            # But if I have to load one more thing from a config file I might kill myself
+            OPEN_TICKET_CHANNEL, category=ticket_category
+        )
+    table = sql.Table(config=CONFIG_FILENAME)
     table.push()
-    # Create a Buttons instance via buttons.py
-    buttons = Buttons()
-    # Add button
-    buttons.add_item(
-        discord.ui.Button(style=discord.ButtonStyle.primary, label="Start A Ticket")
-    )
-    # Send message with button
-    await ticket_channel.send(embed=embed, view=buttons)
+    # Create a Buttons instance via helpers.py
+    await ticket_channel.send(embed=embed, view=TicketOpen())
 
     # Send confirmation
     await interaction.response.send_message(
-        "Setup complete! The button is now available in the #create-a-ticket channel."
+        "Setup complete! Channels have been created and a message has been sent in #create-a-ticket to allow users to make tickets.",
+        ephemeral=True
     )
 
 
@@ -142,7 +145,7 @@ async def list_tickets(interaction: discord.Interaction):
 )
 async def debug(interaction: discord.Interaction, text: str):
     if text == "reset all":
-        sql.reset_to_default()
+        sql.reset_to_default(debug_entry=True)
         await interaction.response.send_message("Database Reset!")
 
     if text == "recent":
