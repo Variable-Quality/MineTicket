@@ -126,11 +126,12 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                     ),
                     embed=embed
                 )
-                await interaction.response.send_message(
+                sent_message = await interaction.response.send_message(
                     embed = discord.Embed(
                         "I'm sorry, I cannot close the ticket as I cannot find the ID. Please report this error.", ephemeral=True, embed=embed
                     )
                 )
+                global_dumbfuck_array.append(sent_message.id, "fuck you")
                 return
         else:
             try:

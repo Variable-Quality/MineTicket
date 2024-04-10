@@ -6,7 +6,6 @@ import ui as bot_ui
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
-from helpers import *
 
 
 # This command isn't working, added sync back to startup for now
