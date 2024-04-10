@@ -1,0 +1,8 @@
+version: 1
+build:
+  os: Windows-10
+  tools:
+    python: "3.10"
+
+sphinx:
+  configuration: docs/conf.py
