@@ -64,8 +64,8 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
             title="Channel Created Notification",
             description=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!",
             color=discord.Color.blue(),
-            ephemeral=True,
-        )
+        ),
+        ephemeral=True
     )
 
 async def create_ticket_helper(interaction: discord.Interaction):
@@ -100,7 +100,10 @@ async def create_ticket_helper(interaction: discord.Interaction):
         description=f"User: {interaction.user.name}\nDiscord ID: {interaction.user.id}\nMinecraft UUID: {ticket.involved_players_minecraft}\nDescription: {ticket.message}",
         color=discord.Color.green()
     )
-    await staff_channel.send(embed=embed, view=ButtonOpen(custom_id=ticket_id))
+    staff_buttons = ButtonOpen(custom_id=ticket_id)
+    bot.add_view(view=staff_buttons)
+
+    await staff_channel.send(embed=embed, view=staff_buttons)
 
 async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
     # TODO:
@@ -151,9 +154,9 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                 embed = discord.Embed(
                 title="Ticket Claim Error",
                 description=f"Ticket #{ticket_id} has already been claimed by {staff_name}.",
-                ephemeral=True,
                 color=discord.Color.yellow()
-                )
+                ),
+                ephemeral=True
             )
             return
         entry.involved_staff_discord = str(staff_member)
@@ -163,10 +166,10 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         await interaction.response.send_message(
             embed = discord.Embed(
                 f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
-                ephemeral=False,
                 embed=embed,
                 view=view
-            )
+            ),
+            ephemeral=False
         )
     else:
         # Non-staff reply
@@ -174,9 +177,9 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
             embed = discord.Embed(
                 title="Claim Error: Role Not Found",
                 description=f"You need the {STAFF_ROLE} role to claim a support ticket.",
-                color=discord.Color.yellow(),
-                ephemeral=True
-            )
+                color=discord.Color.yellow()
+            ),
+            ephemeral=True
         )
 
 async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None):
@@ -186,11 +189,7 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
         try:
             ticket_id = int(interaction.channel.name.split("-")[1])
         except ValueError:
-            embed = discord.Embed(
-                title="Error",
-                description=f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!",
-                color=discord.Color.red()
-            )
+            print(f"WARNING!!!!! TICKET {interaction.channel.name} HAS INVALID TITLE!!")
             interaction.response.send_message(
                 embed = discord.Embed(
                     title="Error",
@@ -263,11 +262,11 @@ class ButtonOpen(discord.ui.View):
     Claim button
     """
 
-    def __init__(self, *, timeout=180, custom_id=None):
+    def __init__(self, *, timeout=None, custom_id=None):
         super().__init__(timeout=timeout)
         self.ticket_id = custom_id
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_button")
     async def claimButton(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
