@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -48,11 +49,18 @@ class Bot(discord.Client):
             # Call the JSON parsing function
             await self.json_parser.parse_json_message(message)
 
-    async def setup_hook(self) -> None:
+    #async def setup_hook(self) -> None:
         # FLOW:
         # Step 1. Iterate over all messages sent with a view option, fetch with discord.abc.Messageable.fetch_message
         # Step 2. use discord.ui.view.from_message()
-        self.add_view(ButtonOpen())
+        # self.add_view(ButtonOpen())
+    async def setup_hook(self):
+        await super().setup_hook()
+        self.add_view(ButtonOpen(timeout=None))  # Add here
+        self.add_view(ButtonClaimed(timeout=None))
+        self.add_view(ButtonClosed(timeout=None))
+        self.add_view(ButtonTicket(timeout=None))
+        self.add_view(TicketOpen(timeout=None))
 
 
 async def create_channel_helper(interaction: discord.Interaction, ticket_id):
@@ -311,8 +319,8 @@ class ButtonOpen(discord.ui.View):
     Claim button
     """
 
-    def __init__(self, *, timeout=None, custom_id):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, timeout=None, custom_id: int = None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.green, custom_id="claim_button")
@@ -335,11 +343,11 @@ class ButtonClaimed(discord.ui.View):
     Add staff button
     """
 
-    def __init__(self, *, timeout=180, custom_id:int=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, timeout=None, custom_id: int = None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="close_button")
     async def close_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -378,7 +386,7 @@ class ButtonClaimed(discord.ui.View):
 
     # TODO:
     # Move this button into the actual 
-    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green, custom_id="add_user")
     async def add_user_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -421,17 +429,18 @@ class ButtonClaimed(discord.ui.View):
         )
         await interaction.followup.send(f"{user.mention} has been added to the ticket.")
 
-    @discord.ui.button(label="Create Text Channel", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Create Text Channel", style=discord.ButtonStyle.blurple, custom_id="create_channel")
     async def create_channel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await create_channel_helper(interaction, self.ticket_id)
 
 
 class ButtonClosed(discord.ui.View):
-    def __init__(self, *, timeout=180, ticket_id):
-        super().__init__(timeout=timeout)
-        self.ticket_id = ticket_id
+    def __init__(self, *, timeout=None, custom_id: int = None):
+        super().__init__(timeout=None)
+        self.ticket_id = custom_id
 
-    @discord.ui.button(label="Reopen Ticket", style=discord.ButtonStyle.green)
+
+    @discord.ui.button(label="Reopen Ticket", style=discord.ButtonStyle.green, custom_id="reopen_button")
     async def reopen_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -466,11 +475,12 @@ class ButtonTicket(discord.ui.View):
     Add staff button
     """
 
-    def __init__(self, *, timeout=180, custom_id:int=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, *, timeout=None, custom_id: int = None):
+        super().__init__(timeout=None)
         self.ticket_id = custom_id
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
+
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="close_button_claim")
     async def close_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -509,7 +519,7 @@ class ButtonTicket(discord.ui.View):
 
     # TODO:
     # Move this button into the actual 
-    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Add User", style=discord.ButtonStyle.green, custom_id="add_staff")
     async def add_user_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
@@ -561,11 +571,12 @@ class TicketOpen(discord.ui.View):
     Claim button
     """
 
-    def __init__(self, *, timeout=180, custom_id=None):
+    def __init__(self, *, timeout=None, custom_id=None):
         super().__init__(timeout=timeout)
         self.ticket_id = custom_id
 
-    @discord.ui.button(label="Create a Ticket", style=discord.ButtonStyle.green)
+
+    @discord.ui.button(label="Create a Ticket", style=discord.ButtonStyle.green, custom_id="create_ticket")
     async def claimButton(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
