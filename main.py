@@ -80,16 +80,16 @@ async def open_ticket(interaction: discord.Interaction):
 # May wanna rename commands to be easier to type
 # Like just claim instead of claim_ticket
 @tree.command(
-    name="claim_ticket", description="Claim a support ticket as a staff member"
+    name="claim_ticket", description="Claim a support ticket"
 )
-async def claim_ticket(interaction: discord.Interaction, ticket_num:int=None):
+async def claim_ticket(interaction: discord.Interaction, ticket_number:int=None):
     
-    await claim_ticket_helper(interaction, ticket_num)
+    await claim_ticket_helper(interaction, ticket_number)
 
 @tree.command(name="close_ticket", description="Close the current ticket")
-async def close_ticket(interaction: discord.Interaction, ticket_num:int=None):
+async def close_ticket(interaction: discord.Interaction, ticket_number:int=None):
 
-    await close_ticket_helper(interaction, ticket_num)
+    await close_ticket_helper(interaction, ticket_number)
 
 # Uselsss function
 @tree.command(name="list_tickets", description="List all open support tickets")
@@ -182,6 +182,15 @@ async def debug(interaction: discord.Interaction, text: str):
 
     if text == "button":
         await interaction.response.send_message("I'm a button message!", view=ButtonOpen(custom_id=7))
+
+    if text == "dynamic":
+        # b = return_button("Claim", "button:open:1")
+        view = discord.ui.View(timeout=None)
+        view.add_item(DynamicButton(ticket_id=2, button_type="channel"))
+        await interaction.response.send_message("My button should open a ticket for ticket 2 because ticket 1 is a debug entry and wont work!", view=view)
+        message = await interaction.original_response()
+        print(discord.ui.View.from_message(message).children[0])
+
 
 
 
