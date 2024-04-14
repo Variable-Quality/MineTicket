@@ -2,7 +2,7 @@ import discord
 import json as pyjson
 import sql_interface as sql
 from configmanager import database_config_manager as db_cfm
-from helpers import *
+from bot_manager import *
 
 # Solomon/DJ - when you get to this point in the merge - We need the naming of the buttons to change into what they are *now* with the new stuff. THis was written for the old way of doing buttons.
 

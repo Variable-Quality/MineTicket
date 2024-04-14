@@ -121,7 +121,7 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
         ephemeral=True
     )
 
-async def create_ticket_helper(interaction: discord.Interaction, message:str="Default placeholder!"):
+async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
     # Polls database and gets the next ID
@@ -699,7 +699,8 @@ class TicketModal(discord.ui.Modal, title='New Ticket Form'):
     """
     Small Modal class for the Open Ticket Button
     """
-    ign = discord.ui.TextInput(label="In-Game Name:", placeholder="Enter your ingame name here", required=False)
+    ign = discord.ui.TextInput(label="In-Game Name:", placeholder="Enter your ingame name here (can be left blank)", required=False)
+    server = discord.ui.TextInput(label="Server:", placeholder="Server the problem is ocurring on", required=True)
     message = discord.ui.TextInput(label="Tell us the problem:", placeholder="Describe the issue here for us.", max_length=4000, required=True, style=discord.TextStyle.long)
 
     async def on_submit(self, interaction:discord.Interaction):
