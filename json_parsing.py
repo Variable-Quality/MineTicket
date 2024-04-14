@@ -98,12 +98,12 @@ class ParseJSON:
 
             ticket_id = sql.get_most_recent_entry(TABLE_NAME, only_id=True)
 
-            mineticket_feed_channel = discord.utils.get(
-                self.guild.text_channels, name="mineticket-feed"
+            mineticket_staff_channel = discord.utils.get(
+                self.guild.text_channels, name=OPEN_TICKET_CHANNEL
             )
 
-            if mineticket_feed_channel is None:
-                raise ValueError("Mineticket Feed channel not found.")
+            if mineticket_staff_channel is None:
+                raise ValueError("Mineticket Staff channel not found.")
 
             embed = discord.Embed(
                 title=f"Ticket #{ticket_id}",
@@ -113,12 +113,14 @@ class ParseJSON:
             embed.add_field(name="Created by", value=user.mention, inline=False)
             embed.add_field(name="Status", value="Open", inline=False)
 
-            buttons = ButtonOpen(custom_id=ticket_id)
-            await mineticket_feed_channel.send(embed=embed, view=buttons)
+            view = discord.ui.View()
+            view.add_item(DynamicButton(ticket_id=ticket_id, button_type="claim", button_style=discord.ButtonStyle.green))
+
+            await mineticket_staff_channel.send(embed=embed, view=view)
         except Exception as e:
             print(f"Error creating ticket: {str(e)}")
 
-    async def claim_event(self, ticket_id, user_uuid, discord_id):
+    async def claim_event(self, ticket_id, user_uuid, discord_id): ##uuid not used for some reason?
         """
         Claims a ticket by updating the ticket status and assigning the staff member.
 
