@@ -335,7 +335,7 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         elif button_type == "claim":
             button_label = "Claim Ticket"
         elif button_type == "open":
-            button_label = "Open a Ticket :incoming_envelope:"
+            button_label = str("Open a Ticket \U0001F4E9")
             button_style = discord.ButtonStyle.gray
         else:
             button_label = "Undefined button_type!"
@@ -344,7 +344,8 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
             item=discord.ui.Button(
                 label=f"{button_label}",
                 style=button_style,
-                custom_id=f'button:{button_type}:{ticket_id}'
+                custom_id=f'button:{button_type}:{ticket_id}',
+                emoji=emoji
             )
         )
         self.id = ticket_id
@@ -364,7 +365,7 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
             style = discord.ButtonStyle.gray
             # This ID never gets used
             # create_ticket_helper gets its own ID when it's called
-            # But if we call the constructor without an ID it gets inconsistent so
+            # But if we call the constructor without an ID it gets fussy about not matching the template so
             id = str(sql.get_most_recent_entry(TABLE_NAME, True)+1)
         else:
             style = discord.ButtonStyle.green

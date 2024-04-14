@@ -27,7 +27,7 @@ async def sync(interaction: discord.Interaction):
 @tree.command(name="setup", description="Starts the setup process")
 # Decorator to restrict this command to staff only
 # NOTE: Role is case sensitive
-@tree.has_role(STAFF_ROLE)
+@commands.has_role(STAFF_ROLE)
 async def run_setup(interaction: discord.Interaction):
     """
     Setup command to be run once the bot joins a server for the first time.
@@ -104,7 +104,8 @@ async def run_setup(interaction: discord.Interaction):
     table.push()
     # Create a DynamicButton instance via bot_managers.py
     view = discord.ui.View()
-    DynamicButton(None, "open", discord.ButtonStyle.gray)
+    create_ticket_button = DynamicButton(ticket_id=1, button_type="open", button_style=discord.ButtonStyle.gray)
+    view.add_item(create_ticket_button)
     await ticket_channel.send(embed=embed, view=view)
 
     # Send confirmation
@@ -126,7 +127,7 @@ async def open_ticket(interaction: discord.Interaction):
 # May wanna rename commands to be easier to type
 # Like just claim instead of claim_ticket
 @tree.command(name="claim_ticket", description="Claim a support ticket")
-@tree.has_role(STAFF_ROLE)
+@commands.has_role(STAFF_ROLE)
 async def claim_ticket(interaction: discord.Interaction, ticket_number:int=None):
     
     await claim_ticket_helper(interaction, ticket_number)
@@ -138,7 +139,7 @@ async def close_ticket(interaction: discord.Interaction, ticket_number:int=None)
 
 # Uselsss function
 @tree.command(name="list_tickets", description="List all open support tickets")
-@tree.has_role(STAFF_ROLE)
+@commands.has_role(STAFF_ROLE)
 async def list_tickets(interaction: discord.Interaction):
     """# Grab live tickets from DB
     open_tickets = None  # (Something like SELECT (["1", "2", "3"]))
