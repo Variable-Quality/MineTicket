@@ -99,7 +99,7 @@ class ParseJSON:
             ticket_id = sql.get_most_recent_entry(TABLE_NAME, only_id=True)
 
             mineticket_feed_channel = discord.utils.get(
-                self.guild.text_channels, name="mineticket-feed"
+                self.guild.text_channels, name=INTAKE_CHANNEL
             )
 
             if mineticket_feed_channel is None:

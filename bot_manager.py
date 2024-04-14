@@ -17,13 +17,6 @@ STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
 
 SERVER_ID = 1207398486933508147
-#TODO:
-# Add Ticket Channel on Setup
-# ADD PERSISTENCE
-# HOLY FUCK ADD PERSISTENCE
-# WHY IS PERSISTENCE A FUCKING THING
-# https://github.com/Rapptz/discord.py/blob/master/examples/views/persistent.py
-# https://stackoverflow.com/questions/73355341/discord-py-buttons-on-message-dont-work-after-bot-restarts
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
@@ -81,7 +74,7 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
         # This also means that it can be used to find player data on players not in the server
         # So use with caution 
         player_discord = await bot.fetch_user(player)
-        pnames.append(player_discord.name)
+        pnames.append(player_discord.display_name)
 
         overwrites[player_discord] = discord.PermissionOverwrite(
             read_messages=True, send_messages=True
@@ -107,15 +100,16 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
     view = discord.ui.View(timeout=None)
     view.add_item(DynamicButton(ticket_id=ticket_id, button_type="close"))
     view.add_item(DynamicButton(ticket_id=ticket_id, button_type="add"))
-    await ticket_channel.send(
+    msg = await ticket_channel.send(
         embed=embed, view=view
     )
+    await msg.pin()
 
     # Reply to the user in the original channel
     await interaction.response.send_message(
         embed = discord.Embed(
             title="Channel Created Notification",
-            description=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!",
+            description=f"{ticket_channel.mention} has been created!",
             color=discord.Color.blue(),
         ),
         ephemeral=True
@@ -128,6 +122,9 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, only_id=True)) + 1
     staff_channel = discord.utils.get(interaction.guild.channels, name=OPEN_TICKET_CHANNEL)
     # Hardcoded Dict, can't think of a way to load this from a config file
+    message = info["message"]
+    server = info["server"]
+    player_ign = info["ingame-name"]
     table_dict = {
         "id": ticket_id,
         "involved_players_discord": str(interaction.user.id),
@@ -159,7 +156,12 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     )
     embed = discord.Embed(
         title=f"Ticket {ticket_id}",
-        description=f"User: {interaction.user.name}\nDiscord ID: {interaction.user.id}\nMinecraft UUID: {ticket.involved_players_minecraft}\nDescription: {ticket.message}",
+        description=
+        f"""User: {interaction.user.mention}
+        Discord ID: {interaction.user.id}
+        Minecraft In-Game Name: {player_ign}
+        Server: {server}
+        Description: {message}""",
         color=discord.Color.green()
     )
     view = discord.ui.View()
@@ -168,11 +170,6 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     await staff_channel.send(embed=embed, view=view)
 
 async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
-    # TODO:
-    # Move this to be able to work in a button
-    # That way we wont need to check for the category or anything since the button will show up where we want it to
-    # Maybe even delete the slash command
-
     # Check if in ticket channel
     # Check role, ex staff
     # TODO:
@@ -704,7 +701,12 @@ class TicketModal(discord.ui.Modal, title='New Ticket Form'):
     message = discord.ui.TextInput(label="Tell us the problem:", placeholder="Describe the issue here for us.", max_length=4000, required=True, style=discord.TextStyle.long)
 
     async def on_submit(self, interaction:discord.Interaction):
-        await create_ticket_helper(interaction, message=self.message.value)
+        data = {
+            "ingame-name": self.ign.value,
+            "server": self.server.value,
+            "message": self.message.value
+                }
+        await create_ticket_helper(interaction, info=data)
 
 intents = discord.Intents.default()
 intents.message_content = True
