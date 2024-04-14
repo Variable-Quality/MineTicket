@@ -136,7 +136,7 @@ class ParseJSON:
             staff_member = sql.player_from_interaction(
                 discord.Object(id=int(discord_id))
             )
-            entry.involved_staff = str(staff_member)
+            entry.involved_staff_discord = str(staff_member)
             entry.status = "claimed"
             entry.update()
 

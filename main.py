@@ -57,7 +57,7 @@ async def run_setup(interaction: discord.Interaction):
         # NOTE:
         # This channel is hidden unless the user has admin priv
         mineticket_feed_channel = await interaction.guild.create_text_channel(
-            INTAKE_CHANNEL, category=ticket_category
+            INTAKE_CHANNEL, category=ticket_category, overwrites=overwrites
         )
 
     # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
