@@ -53,12 +53,9 @@ class Bot(discord.Client):
             # Call the JSON parsing function
             await self.json_parser.parse_json_message(message)
 
-    #async def setup_hook(self) -> None:
-        # FLOW:
-        # Step 1. Iterate over all messages sent with a view option, fetch with discord.abc.Messageable.fetch_message
-        # Step 2. use discord.ui.view.from_message()
-        # self.add_view(ButtonOpen())
     async def setup_hook(self) -> None:
+        # Makes DynamicButton a persistent class
+        # Avoids a lot of hassle with persistent views
         self.add_dynamic_items(DynamicButton)
 
 
@@ -315,7 +312,7 @@ What are the button states?
 
 """
 class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button:(?P<type>[a-zA-Z]+):(?P<id>[0-9]+)'):
-    def __init__(self, *, ticket_id, button_type:str, button_style:discord.ButtonStyle=discord.ButtonStyle.green) -> None:
+    def __init__(self, *, ticket_id, button_type:str, button_style:discord.ButtonStyle=discord.ButtonStyle.green, emoji=None) -> None:
         """
         Possible Button Types:
         channel, add, close, reopen, claim, create
@@ -338,7 +335,7 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         elif button_type == "claim":
             button_label = "Claim Ticket"
         elif button_type == "open":
-            button_label = "Open a Ticket"
+            button_label = "Open a Ticket :incoming_envelope:"
             button_style = discord.ButtonStyle.gray
         else:
             button_label = "Undefined button_type!"
@@ -357,12 +354,17 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
     async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
         id = str(match['id'])
         button_type = str(match['type']).lower()
+        # This elif chain feels redundant
+        # It's basically a copy/paste of the init function
         if button_type == "close":
             style = discord.ButtonStyle.red
         elif button_type == "channel":
             style = discord.ButtonStyle.blurple
         elif button_type == "open":
             style = discord.ButtonStyle.gray
+            # This ID never gets used
+            # create_ticket_helper gets its own ID when it's called
+            # But if we call the constructor without an ID it gets inconsistent so
             id = str(sql.get_most_recent_entry(TABLE_NAME, True)+1)
         else:
             style = discord.ButtonStyle.green
@@ -370,6 +372,8 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         # await claim_ticket_helper(interaction)
     
     async def callback(self, interaction: discord.Interaction) -> None:
+        #TODO: 
+        # implement add button
         if self.button_type == "claim":
             await claim_ticket_helper(interaction, self.id)
         elif self.button_type == "channel":
