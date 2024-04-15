@@ -143,52 +143,6 @@ async def close_ticket(interaction: discord.Interaction, ticket_number:int=None)
 
     await close_ticket_helper(interaction, ticket_number)
 
-# Uselsss function
-@tree.command(name="list_tickets", description="List all open support tickets")
-@commands.has_role(STAFF_ROLE)
-async def list_tickets(interaction: discord.Interaction):
-    """# Grab live tickets from DB
-    open_tickets = None  # (Something like SELECT (["1", "2", "3"]))
-
-    if not open_tickets:
-        await ctx.reply("No open tickets found.")
-        return
-
-    # Create an embed to display ticket information
-    embed = discord.Embed(title="Open Support Tickets", color=discord.Color.orange())
-
-    # Add ticket fields in here
-    # for ticket in open_tickets:
-    #    None = ticket
-    #    embed.add_field()
-
-    await ctx.reply(embed=embed)"""
-    open_tickets = sql.fetch_by_status("open", TABLE_NAME)
-    claimed_tickets = sql.fetch_by_status("claimed", TABLE_NAME)
-
-    if not open_tickets and not claimed_tickets:
-        await interaction.response.send_message("No open or claimed tickets found.")
-        return
-
-    embed = discord.Embed(title="Support Tickets", color=discord.Color.orange())
-
-    for ticket in open_tickets:
-        embed.add_field(
-            name=f"Ticket #{ticket.id} (Open)",
-            value=f"Started by: {ticket.involved_players.split(',')[0]}\nAdded users: {', '.join(ticket.involved_players.split(',')[1:])}",
-            inline=False,
-        )
-
-    for ticket in claimed_tickets:
-        embed.add_field(
-            name=f"Ticket #{ticket.id} (Claimed)",
-            value=f"Started by: {ticket.involved_players.split(',')[0]}\nAdded users: {', '.join(ticket.involved_players.split(',')[1:])}\nClaimed by: {ticket.involved_staff.split(',')[0]}",
-            inline=False,
-        )
-
-    await interaction.response.send_message(embed=embed)
-
-
 
 # Will be removed with final version
 @tree.command(name="debug",description="Debug command for doing whatever you need it to do because caching is a cunt")
