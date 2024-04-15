@@ -1,10 +1,12 @@
 import asyncio
+from typing import Type
 import discord
 from discord.ext import commands
 from discord import app_commands
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 import sql_interface as sql
+import re
 
 CONFIG_FILENAME = None
 CFM = db_cfm(filename=CONFIG_FILENAME)
@@ -13,13 +15,8 @@ TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
-#TODO:
-# Add Ticket Channel on Setup
-# ADD PERSISTENCE
-# HOLY FUCK ADD PERSISTENCE
-# WHY IS PERSISTENCE A FUCKING THING
-# https://github.com/Rapptz/discord.py/blob/master/examples/views/persistent.py
-# https://stackoverflow.com/questions/73355341/discord-py-buttons-on-message-dont-work-after-bot-restarts
+
+SERVER_ID = 1207398486933508147
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
@@ -49,23 +46,14 @@ class Bot(discord.Client):
             # Call the JSON parsing function
             await self.json_parser.parse_json_message(message)
 
-    #async def setup_hook(self) -> None:
-        # FLOW:
-        # Step 1. Iterate over all messages sent with a view option, fetch with discord.abc.Messageable.fetch_message
-        # Step 2. use discord.ui.view.from_message()
-        # self.add_view(ButtonOpen())
-    async def setup_hook(self):
-        await super().setup_hook()
-        self.add_view(ButtonOpen(timeout=None))  # Add here
-        self.add_view(ButtonClaimed(timeout=None))
-        self.add_view(ButtonClosed(timeout=None))
-        self.add_view(ButtonTicket(timeout=None))
-        self.add_view(TicketOpen(timeout=None))
+    async def setup_hook(self) -> None:
+        # Makes DynamicButton a persistent class
+        # Avoids a lot of hassle with persistent views
+        self.add_dynamic_items(DynamicButton)
 
 
 async def create_channel_helper(interaction: discord.Interaction, ticket_id):
     print("Creating ticket!")
-    print(interaction.guild.id)
     sql_entry = sql.fetch_by_id(int(ticket_id))
     players = sql_entry.involved_players_discord.split(",")
     overwrites = {
@@ -86,7 +74,7 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
         # This also means that it can be used to find player data on players not in the server
         # So use with caution 
         player_discord = await bot.fetch_user(player)
-        pnames.append(player_discord.name)
+        pnames.append(player_discord.mention)
 
         overwrites[player_discord] = discord.PermissionOverwrite(
             read_messages=True, send_messages=True
@@ -109,27 +97,34 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
         description=f"Players involved: {involved_players}\nTicket Message: {sql_entry.message}",
         color=discord.Color.green()
     )
-    await ticket_channel.send(
-        f"Ticket #{ticket_id} created by {interaction.user.mention}!"
+    view = discord.ui.View(timeout=None)
+    view.add_item(DynamicButton(ticket_id=ticket_id, button_type="close"))
+    view.add_item(DynamicButton(ticket_id=ticket_id, button_type="add"))
+    msg = await ticket_channel.send(
+        embed=embed, view=view
     )
+    await msg.pin()
 
     # Reply to the user in the original channel
     await interaction.response.send_message(
         embed = discord.Embed(
             title="Channel Created Notification",
-            description=f"Ticket #{ticket_id} is being created in {ticket_channel.mention}!",
+            description=f"{ticket_channel.mention} has been created!",
             color=discord.Color.blue(),
         ),
         ephemeral=True
     )
 
-async def create_ticket_helper(interaction: discord.Interaction):
+async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     # Create a new channel named "ticket-{user_id}"
     # Need to figure a new way to do this as this was a temp solve
     # Polls database and gets the next ID
     ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, only_id=True)) + 1
     staff_channel = discord.utils.get(interaction.guild.channels, name=OPEN_TICKET_CHANNEL)
     # Hardcoded Dict, can't think of a way to load this from a config file
+    message = info["message"]
+    server = info["server"]
+    player_ign = info["ingame-name"]
     table_dict = {
         "id": ticket_id,
         "involved_players_discord": str(interaction.user.id),
@@ -141,7 +136,7 @@ async def create_ticket_helper(interaction: discord.Interaction):
         "status": "open",
         # TODO:
         # Update message field with info player fills in from UI
-        "message": "I'm a filler message! Yipee!!!",
+        "message": message,
     }
 
     # Create the ticket in sql
@@ -149,28 +144,41 @@ async def create_ticket_helper(interaction: discord.Interaction):
 
     # Push it!
     ticket.push()
-    await interaction.response.send_message(f"Ticket {ticket_id} has been created!", ephemeral=True, delete_after=30)
+    print(interaction.response.is_done())
+    await interaction.response.send_message(
+    embed=discord.Embed(
+        title="Ticket Created!",
+        description=f"Your ticket, ticket #{ticket_id}, has been created! A staff member will contact you shortly for the next steps.",
+        color=discord.Color.green()
+        ), 
+    ephemeral=True, 
+    delete_after=30
+    )
     embed = discord.Embed(
         title=f"Ticket {ticket_id}",
-        description=f"User: {interaction.user.name}\nDiscord ID: {interaction.user.id}\nMinecraft UUID: {ticket.involved_players_minecraft}\nDescription: {ticket.message}",
+        description=
+        f"""User: {interaction.user.mention}
+        Discord ID: {interaction.user.id}
+        Minecraft In-Game Name: {player_ign}
+        Server: {server}
+        Description: {message}""",
         color=discord.Color.green()
     )
-    staff_buttons = ButtonOpen(custom_id=ticket_id)
-    bot.add_view(view=staff_buttons)
+    view = discord.ui.View()
+    view.add_item(DynamicButton(ticket_id=ticket_id, button_type="claim", button_style=discord.ButtonStyle.green))
 
-    await staff_channel.send(embed=embed, view=staff_buttons)
+    await staff_channel.send(embed=embed, view=view)
 
 async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
-    # TODO:
-    # Move this to be able to work in a button
-    # That way we wont need to check for the category or anything since the button will show up where we want it to
-    # Maybe even delete the slash command
-
     # Check if in ticket channel
     # Check role, ex staff
+    # TODO:
+    # Move role checks to dynamic button interaction_check func
+    # https://discordpy.readthedocs.io/en/latest/interactions/api.html#discord.ui.DynamicItem.interaction_check
+    ticket_id = ticket_num
     staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE)
     if staff_role and staff_role in interaction.user.roles:
-        if not ticket_num:
+        if not ticket_id:
             # Grab ticket ID from the channel name
             try:
                 ticket_id = int(interaction.channel.name.split("-")[1])
@@ -189,7 +197,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                 return
         else:
             try:
-                ticket_id = int(ticket_num)
+                ticket_id = int(ticket_id)
             except ValueError:
                 embed = discord.Embed(
                     title="Invalid Ticket ID",
@@ -219,6 +227,10 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         entry.status = "claimed"
         entry.update_dict()
         entry.update()
+        await interaction.message.delete()
+        view = discord.ui.View()
+        view.add_item(DynamicButton(ticket_id=ticket_id, button_type="close", button_style=discord.ButtonStyle.green))
+        view.add_item(DynamicButton(ticket_id=ticket_id, button_type="channel", button_style=discord.ButtonStyle.blurple))
         await interaction.response.send_message(
             embed = discord.Embed(
                 title="Ticket Claimed",
@@ -226,7 +238,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
                 color=discord.Color.green()
             ),
             ephemeral=False,
-            view=ButtonClaimed(custom_id=ticket_id)
+            view=view
         )
     else:
         # Non-staff reply
@@ -242,6 +254,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
 async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None):
 
     # Grab ticket ID from the channel name
+    ticket_channel = discord.utils.get(interaction.guild.text_channels, name=f"ticket-{ticket_num}")
     if not ticket_num:
         try:
             ticket_id = int(interaction.channel.name.split("-")[1])
@@ -260,26 +273,27 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
             ticket_id = int(ticket_num)
         except ValueError:
             embed = discord.Embed(
-                interaction.response.send_message(
-                    title="Error",
-                    description=f"Please enter a valid ticket ID.",
-                    color=discord.Color.red(),
-                    ephemeral=True,
-                )
+                title="Error",
+                description=f"Please enter a valid ticket ID.",
+                color=discord.Color.red(),
+                ephemeral=True,
             )
+            interaction.response.send_message(embed=embed, ephemeral=True)
             return
     # Archive command here
     # await interaction.channel.delete()
     # Notify channel is closed, dont delete yet
     entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
     entry.status = "closed"
-    curr_overwrites = interaction.channel.overwrites
-    keys = list(curr_overwrites.keys())
-    for key in keys[1:]:
-        member = bot.get_user(int(key.id))
-        await interaction.channel.set_permissions(
-            member, send_messages=False, read_messages=True
-        )
+    if ticket_channel: 
+        curr_overwrites = ticket_channel.overwrites
+        keys = list(curr_overwrites.keys())
+        print(keys)
+        for key in keys[1:]:
+            member = bot.get_user(int(key.id))
+            await ticket_channel.set_permissions(
+                member, send_messages=False, read_messages=True
+            )
     entry.update_dict()
     entry.update()
     await interaction.response.send_message(
@@ -308,7 +322,93 @@ What are the button states?
     Chat is unusable
 
 """
+class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button:(?P<type>[a-zA-Z]+):(?P<id>[0-9]+)'):
+    def __init__(self, *, ticket_id, button_type:str, button_style:discord.ButtonStyle=discord.ButtonStyle.green) -> None:
+        """
+        Possible Button Types:
 
+        channel: Creates a new text channel 
+        add: Adds a new user to the channel <- TODO: Use discord.ui.Select for this
+        close: Closes the associated ticket 
+        reopen: Reopens ticket, currently not in use
+        claim: Claims the associated ticket 
+        open: Creates a new ticket
+        
+        """
+        button_type = button_type.lower()
+        
+
+
+        if button_type == "channel":
+            button_label = "Create a Text Channel"
+            button_style = discord.ButtonStyle.blurple
+        elif button_type == "add":
+            button_label = "Add User"
+        elif button_type == "close":
+            button_label = "Close Ticket"
+            button_style = discord.ButtonStyle.red
+        elif button_type == "reopen":
+            button_label = "Reopen Ticket"
+        elif button_type == "claim":
+            button_label = "Claim Ticket"
+        elif button_type == "open":
+            button_label = str("Open a Ticket \U0001F4E9")
+            button_style = discord.ButtonStyle.gray
+        else:
+            button_label = "Undefined button_type!"
+
+        super().__init__(
+            item=discord.ui.Button(
+                label=f"{button_label}",
+                style=button_style,
+                custom_id=f'button:{button_type}:{ticket_id}',
+            )
+        )
+        self.id = ticket_id
+        self.button_type = button_type
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
+        id = str(match['id'])
+        button_type = str(match['type']).lower()
+        # This elif chain feels redundant
+        # It's basically a copy/paste of the init function
+        if button_type == "close":
+            style = discord.ButtonStyle.red
+        elif button_type == "channel":
+            style = discord.ButtonStyle.blurple
+        elif button_type == "open":
+            style = discord.ButtonStyle.gray
+            # This ID never gets used
+            # create_ticket_helper gets its own ID when it's called
+            # But if we call the constructor without an ID it gets fussy about not matching the template so
+            id = str(sql.get_most_recent_entry(TABLE_NAME, True)+1)
+        else:
+            style = discord.ButtonStyle.green
+        return cls(ticket_id=id, button_type=button_type, button_style=style)
+        # await claim_ticket_helper(interaction)
+    
+    async def callback(self, interaction: discord.Interaction) -> None:
+        #TODO: 
+        # implement add button
+        if self.button_type == "claim":
+            await claim_ticket_helper(interaction, self.id)
+        elif self.button_type == "channel":
+            await create_channel_helper(interaction, self.id)
+        elif self.button_type == "close":
+            await close_ticket_helper(interaction, self.id)
+        elif self.button_type == "open":
+            modal = TicketModal()
+            await interaction.response.send_modal(modal)
+        else:
+            embed = discord.Embed(
+                title = "Unexpected Error",
+                description = f"An unexpected error has occured, and the button you have clicked is not a valid button. Please report this issue.\nButton Type: {self.button_type}",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed)
+            return
+        
 
 class ButtonOpen(discord.ui.View):
     """
@@ -319,7 +419,7 @@ class ButtonOpen(discord.ui.View):
     Claim button
     """
 
-    def __init__(self, *, timeout=None, custom_id: int = None):
+    def __init__(self, *, timeout=None, custom_id=None):
         super().__init__(timeout=None)
         self.ticket_id = custom_id
 
@@ -592,6 +692,21 @@ class TicketOpen(discord.ui.View):
             embed=embed
         )
 
+class TicketModal(discord.ui.Modal, title='New Ticket Form'):
+    """
+    Small Modal class for the Open Ticket Button
+    """
+    ign = discord.ui.TextInput(label="In-Game Name:", placeholder="Enter your ingame name here (can be left blank)", required=False)
+    server = discord.ui.TextInput(label="Server:", placeholder="Server the problem is ocurring on", required=True)
+    message = discord.ui.TextInput(label="Tell us the problem:", placeholder="Describe the issue here for us.", max_length=4000, required=True, style=discord.TextStyle.long)
+
+    async def on_submit(self, interaction:discord.Interaction):
+        data = {
+            "ingame-name": self.ign.value,
+            "server": self.server.value,
+            "message": self.message.value
+                }
+        await create_ticket_helper(interaction, info=data)
 
 
 intents = discord.Intents.default()
@@ -601,3 +716,7 @@ intents.members = True
 
 bot = Bot(intents)
 tree = app_commands.CommandTree(bot)
+
+
+if __name__ == "__main__":
+    pass
