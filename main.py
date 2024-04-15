@@ -119,10 +119,16 @@ async def run_setup(interaction: discord.Interaction):
         ephemeral=True
     )
 
+# NOTE:
+# Originally we had planned to leave this command here
+# However, we didn't think it made sense to spawn a modal anywhere and anywhere
+# So we relegated it to just the button 
+# Additionally we changed how info is taken in for tickets, almost requiring a modal
+# So now its here, in a kinda graveyard.
 
-@tree.command(name="open_ticket", description="Opens a ticket")
-async def open_ticket(interaction: discord.Interaction):
-    await create_ticket_helper(interaction)
+# @tree.command(name="open_ticket", description="Opens a ticket")
+# async def open_ticket(interaction: discord.Interaction):
+#     await create_ticket_helper(interaction)
 
 # May wanna rename commands to be easier to type
 # Like just claim instead of claim_ticket

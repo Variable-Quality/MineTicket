@@ -74,7 +74,7 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
         # This also means that it can be used to find player data on players not in the server
         # So use with caution 
         player_discord = await bot.fetch_user(player)
-        pnames.append(player_discord.display_name)
+        pnames.append(player_discord.mention)
 
         overwrites[player_discord] = discord.PermissionOverwrite(
             read_messages=True, send_messages=True
@@ -707,6 +707,7 @@ class TicketModal(discord.ui.Modal, title='New Ticket Form'):
             "message": self.message.value
                 }
         await create_ticket_helper(interaction, info=data)
+
 
 intents = discord.Intents.default()
 intents.message_content = True
