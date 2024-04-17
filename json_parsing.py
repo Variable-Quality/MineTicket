@@ -156,7 +156,7 @@ class ParseJSON:
             None
         """
         # Close the ticket and update the message
-        entry = sql.fetch_by_id(ticket_id, TABLE_NAME)
+        entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
         if entry:
             entry.status = "closed"
             entry.message = message

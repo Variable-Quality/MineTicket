@@ -51,6 +51,69 @@ class Bot(discord.Client):
         # Avoids a lot of hassle with persistent views
         self.add_dynamic_items(DynamicButton)
 
+def find_user(name, members: list):
+    for member in members:
+        if member.nick is not None:
+            if member.nick.lower() == name.lower():
+                return member
+        else:
+            if member.name.lower() == name.lower():
+                return member
+    
+    return None
+
+async def add_user_helper(interaction: discord.Interaction, ticket_id):
+
+    # This assumes the interaction takes place inside of the ticket channel
+    # Oh well!
+    channel = interaction.channel
+    def check(m):
+        return m.channel == interaction.channel
+    
+    await interaction.response.send_message(
+        "Please enter the user's ID, nickname, or mention:", ephemeral=True
+    )
+
+    try:
+        msg = await interaction.client.wait_for(
+            "message", check=check, timeout=60.0
+        )
+        await msg.delete()
+    except asyncio.TimeoutError:
+        await interaction.followup.send(
+            "Timed out waiting for user input.", ephemeral=True
+        )
+        return
+    
+    mem = find_user(msg.content, interaction.guild.members)
+    if mem == None:
+        user_id = msg.content.strip("<@!>")
+    else:
+        user_id = mem.id
+
+    if user_id == "everyone":
+        embed = discord.Embed(
+            title="You just tried to add everyone to this one ticket.",
+            description="No.",
+            color=discord.Color.red()
+        )
+        await interaction.followup.send(embed=embed, ephemeral=False)
+        return
+    try:
+        # Verifies the user is a real user
+        user = await interaction.guild.fetch_member(int(user_id))
+    except discord.NotFound:
+        await interaction.followup.send(
+            "Invalid user ID or mention.", ephemeral=True
+        )
+        return
+    entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
+    entry.involved_players_discord += f",{user_id}"
+    entry.update()
+    await channel.set_permissions(
+        user, read_messages=True, send_messages=True
+    )
+    await interaction.followup.send(f"{user.mention} has been added to the ticket.")
 
 async def create_channel_helper(interaction: discord.Interaction, ticket_id):
     print("Creating ticket!")
@@ -400,6 +463,8 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         elif self.button_type == "open":
             modal = TicketModal()
             await interaction.response.send_modal(modal)
+        elif self.button_type == "add":
+            await add_user_helper(interaction, self.id)
         else:
             embed = discord.Embed(
                 title = "Unexpected Error",
