@@ -6,8 +6,6 @@ from bot_manager import *
 
 # Solomon/DJ - when you get to this point in the merge - We need the naming of the buttons to change into what they are *now* with the new stuff. THis was written for the old way of doing buttons.
 
-CFM = db_cfm()
-TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 
 
 class ParseJSON:
@@ -107,11 +105,13 @@ class ParseJSON:
 
             embed = discord.Embed(
                 title=f"Ticket #{ticket_id}",
-                description=message,
-                color=discord.Color.blue(),
+                description=
+                f"""User: {user.mention}
+                Discord ID: {user.id}
+                Minecraft UUID:  {user_uuid}
+                Description: {message}""",
+                color=discord.Color.green()
             )
-            embed.add_field(name="Created by", value=user.mention, inline=False)
-            embed.add_field(name="Status", value="Open", inline=False)
 
             view = discord.ui.View()
             view.add_item(DynamicButton(ticket_id=ticket_id, button_type="claim", button_style=discord.ButtonStyle.green))

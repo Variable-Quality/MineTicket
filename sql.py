@@ -220,7 +220,7 @@ class SQLManager:
 
     # Makes an SQL table.
     # Table Data is an array of string tuples, with the first value being the column name, and the second value being the data it holds.
-    def create_table(self, table: str, table_data: dict):
+    def create_table(self, table: str, table_data: dict, is_serial=True):
         # Sanitize like it's mid 2020
         safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
 
@@ -231,7 +231,10 @@ class SQLManager:
             safe_table_data.append(temp_tuple)
         # Palmer/Art apprach (Sorry DJ)
         # Fix is a fix is a fix, great work guys - DJ
-        table_data_string = "(id SERIAL PRIMARY KEY, "
+        if is_serial:
+            table_data_string = "(id SERIAL PRIMARY KEY, "
+        else:
+            table_data_string = "(id PRIMARY KEY, "
         for column, datatype in table_data.items():
             if column != "id":
                 table_data_string += f"{column} {datatype}, "

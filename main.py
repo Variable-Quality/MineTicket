@@ -148,7 +148,7 @@ async def close_ticket(interaction: discord.Interaction, ticket_number:int=None)
 @tree.command(name="debug",description="Debug command for doing whatever you need it to do because caching is a cunt")
 async def debug(interaction: discord.Interaction, text: str):
     if text == "reset all":
-        sql.reset_to_default(debug_entry=True)
+        sql.reset_to_default(debug_entry=False)
         await interaction.response.send_message("Database Reset!")
 
     if text == "recent":

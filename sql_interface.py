@@ -130,6 +130,26 @@ class TableEntry:
             values.append(self.table_dict[key])
         self._manager.update_row(self.cfm.cfg["DATABASE"]["table"], self.columns, values, self.id)
 
+# Quick and dirty table manager for the JSON parsing
+# Makes sure we clean up any messages created by/closed by the JSON
+# TODO:
+# Periodic check to ensure messages have not been otherwise handled
+# Create this table alongside everything else
+class json_table_manager:
+
+    def __init__(self, table_exists=True):
+        self._manager = SQLManager()
+        self.data = {"id": "PRIMARY KEY",
+                     "message_ids": "TEXT"}
+        if not table_exists:
+            self._manager.create_table("json_messages", self.data, is_serial=False)
+
+    def add_message(self, message:discord.Message, id:int):
+        self._manager.insert(table="json_messages", columns=list(self.data.keys()), values=[id, message.id])
+
+    def remove_message(self, message_id:int):
+        self._manager.delete_row(table="json_messages", variable="id", value=message_id, type="int")
+    
 
 # Allows access to the SQLManager reset_to_default command
 def reset_to_default(debug_entry=False, config:str=None):

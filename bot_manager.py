@@ -16,6 +16,7 @@ INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
 
+# Unused, is the guild ID of our test server
 SERVER_ID = 1207398486933508147
 class Bot(discord.Client):
     def __init__(self, intents):
@@ -129,8 +130,6 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
     }
     pnames = []
     for player in players:
-        #TODO:
-        # Update players with access whenever a new user is added to the ticket
         #NOTE:
         # fetch_user is an api call and should be used sparingly
         # for whatever reason, get_user only reaches into the bot cache, which at the moment doesnt seem to contain member info
@@ -180,9 +179,10 @@ async def create_channel_helper(interaction: discord.Interaction, ticket_id):
 
 async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     # Create a new channel named "ticket-{user_id}"
-    # Need to figure a new way to do this as this was a temp solve
-    # Polls database and gets the next ID
-    ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, only_id=True)) + 1
+    try:
+        ticket_id = int(sql.get_most_recent_entry(TABLE_NAME, only_id=True)) + 1
+    except IndexError:
+        ticket_id = 1
     staff_channel = discord.utils.get(interaction.guild.channels, name=OPEN_TICKET_CHANNEL)
     # Hardcoded Dict, can't think of a way to load this from a config file
     message = info["message"]
@@ -207,7 +207,6 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
 
     # Push it!
     ticket.push()
-    print(interaction.response.is_done())
     await interaction.response.send_message(
     embed=discord.Embed(
         title="Ticket Created!",
@@ -218,7 +217,7 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     delete_after=30
     )
     embed = discord.Embed(
-        title=f"Ticket {ticket_id}",
+        title=f"Ticket #{ticket_id}",
         description=
         f"""User: {interaction.user.mention}
         Discord ID: {interaction.user.id}
@@ -296,7 +295,7 @@ async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None,
         view.add_item(DynamicButton(ticket_id=ticket_id, button_type="channel", button_style=discord.ButtonStyle.blurple))
         await interaction.response.send_message(
             embed = discord.Embed(
-                title="Ticket Claimed",
+                title=f"Ticket #{ticket_id} Claimed",
                 description=f"Ticket #{ticket_id} has been claimed by {interaction.user.mention}.",
                 color=discord.Color.green()
             ),
@@ -361,6 +360,7 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
     entry.update()
     await interaction.response.send_message(
         embed = discord.Embed(
+            title=f"Ticket #{ticket_id} closed",
             description=f"Ticket #{ticket_id} has been closed.",
             color=discord.Color.blue()
         )
@@ -445,7 +445,10 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
             # This ID never gets used
             # create_ticket_helper gets its own ID when it's called
             # But if we call the constructor without an ID it gets fussy about not matching the template so
-            id = str(sql.get_most_recent_entry(TABLE_NAME, True)+1)
+            try:
+                id = str(sql.get_most_recent_entry(TABLE_NAME, True)+1)
+            except IndexError:
+                id = 1
         else:
             style = discord.ButtonStyle.green
         return cls(ticket_id=id, button_type=button_type, button_style=style)
