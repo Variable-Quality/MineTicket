@@ -4,24 +4,11 @@ import sql_interface as sql
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
-# Solomon/DJ - when you get to this point in the merge - We need the naming of the buttons to change into what they are *now* with the new stuff. THis was written for the old way of doing buttons.
-
-
 
 class ParseJSON:
     def __init__(self, bot, guild):
         self.bot = bot
         self.guild = guild
-
-    def setup_listener(self):
-        # This section may not be necessary in a bit, we will see
-        @self.client.event
-        async def on_message(message):
-            if (
-                message.channel.name == "intake"
-                and message.channel.category.name == "Tickets"
-            ):
-                await self.parse_json_message(message)
 
     async def parse_json_message(self, message):
         """
@@ -46,6 +33,7 @@ class ParseJSON:
                 ticket_id = json_data.get("id")
                 user_uuid = json_data.get("user-uuid")
                 discord_id = json_data.get("discord-id")
+                message_content = ""
                 await self.claim_event(ticket_id, user_uuid, discord_id)
             elif event == "close":
                 ticket_id = json_data.get("id")
@@ -76,14 +64,15 @@ class ParseJSON:
             user = self.bot.get_user(int(discord_id))
 
             if user is None:
-                raise ValueError(f"User with ID {discord_id} not found.")
-
-            player = sql.Player(user.name, discord_id)
+                print(f"User with ID {discord_id} not found in JSON query.")
+                player = sql.Player(name="Unknown")
+            else:
+                player = sql.Player(user.name, discord_id)
 
             # Create a new ticket entry using the table configuration from configmanager
             table_dict = {
                 "id": None,
-                "involved_players_discord": str(player),
+                "involved_players_discord": user.id,
                 "involved_players_minecraft": "",
                 "involved_staff_discord": "",
                 "involved_staff_minecraft": "",
@@ -101,12 +90,17 @@ class ParseJSON:
             )
 
             if mineticket_staff_channel is None:
+                # In theory this shouldn't happen since this channel and the staff channel are created at the same time
+                # But yknow how that goes
                 raise ValueError("Mineticket Staff channel not found.")
-
+            if user is None:
+                uname = "Unknown"
+            else:
+                uname = user.mention
             embed = discord.Embed(
                 title=f"Ticket #{ticket_id}",
                 description=
-                f"""User: {user.mention}
+                f"""User: {uname}
                 Discord ID: {user.id}
                 Minecraft UUID:  {user_uuid}
                 Description: {message}""",
@@ -120,7 +114,7 @@ class ParseJSON:
         except Exception as e:
             print(f"Error creating ticket: {str(e)}")
 
-    async def claim_event(self, ticket_id, user_uuid, discord_id): ##uuid not used for some reason?
+    async def claim_event(self, ticket_id, user_uuid, discord_id):
         """
         Claims a ticket by updating the ticket status and assigning the staff member.
 

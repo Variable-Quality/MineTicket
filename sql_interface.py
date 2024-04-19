@@ -1,13 +1,20 @@
-from sql import SQLManager
+from sql import SQLManager, initial_database_creation
 from os import path
 from configmanager import database_config_manager as db_cfm
 import mariadb
 import discord.utils
 
-
 STAFF_ROLE = "Staff"
 
+# Runs when the setup command is run
+# Creates the database and both tables necessary, from the cfg file
+# JSON table is hardcoded
+def init_db(config:str):
+    initial_database_creation(config)
+
+
 # Helper class for containerizing players
+# Mostly depreciated in current build
 class Player:
 
     def __init__(self, name: str, discord_id: str, is_staff: bool = False):
@@ -23,7 +30,6 @@ class Player:
 
 
 # Table object
-# Not too useful now, maybe make the primary way of interacting with tables?
 class Table:
 
     def __init__(self, config:str=None):
@@ -49,8 +55,6 @@ class Table:
 
 
 class TableEntry:
-    # TODO: Dynamic Column names, maybe add origin server?
-
     # Data handler class for a ticket. Contains everything a ticket should.
     # Leave ID as none if the ticket is not in the DB yet.
     def __init__(
@@ -144,11 +148,35 @@ class json_table_manager:
         if not table_exists:
             self._manager.create_table("json_messages", self.data, is_serial=False)
 
-    def add_message(self, message:discord.Message, id:int):
-        self._manager.insert(table="json_messages", columns=list(self.data.keys()), values=[id, message.id])
+    def get_messages(self, id:int):
+        return fetch_by_id(id=id, config=None, table="json_messages", data=self.data).message_ids
 
-    def remove_message(self, message_id:int):
-        self._manager.delete_row(table="json_messages", variable="id", value=message_id, type="int")
+    def add_message(self, message:discord.Message, id:int):
+        existing_entry = fetch_by_id(id=id, config=None, table="json_messages", data=self.data)
+        if existing_entry:
+            messages = existing_entry.message_ids + f",{message.id}"
+            self._manager.update_row(table="json_messages", variables=["message_ids"], values=[messages], id=id)
+        else:
+            self._manager.insert(table="json_messages", columns=list(self.data.keys()), values=[id, message.id])
+
+    def remove_message(self, message_id:int, id:int):
+        existing_entry = fetch_by_id(id=id, config=None, table="json_messages", data=self.data)
+        try:
+            entry_messages = existing_entry.message_ids.split(",")
+        except AttributeError:
+            pass
+
+        if len(entry_messages) > 1:
+            str.replace()
+            new_messages = existing_entry.message_ids.replace(str(message_id), "").split(",")
+            new_entry = new_messages[0]
+            if len(new_messages) > 1:
+                for message in new_messages[1:]:
+                    new_entry += f",{message}"
+            
+            self._manager.update_row(table="json_messages", variables=["message_ids"], values=[new_entry], id=id)
+        else:    
+            self._manager.delete_row(table="json_messages", variable="id", value=message_id, type="int")
     
 
 # Allows access to the SQLManager reset_to_default command
@@ -157,10 +185,17 @@ def reset_to_default(debug_entry=False, config:str=None):
     manager.reset_to_default(debug_entry, config)
 
 
-def fetch_by_id(id: int, config:str=None) -> TableEntry:
-    cfm = db_cfm(filename=config)
-    table = cfm.cfg["DATABASE"]["table"]
-    columns = list(cfm.cfg["TABLE"].keys())
+def fetch_by_id(id: int, config:str=None, table:str=None, data:dict=None) -> TableEntry:
+    if config:
+        cfm = db_cfm(filename=config)
+        table = cfm.cfg["DATABASE"]["table"]
+        columns = list(cfm.cfg["TABLE"].keys())
+    elif table and data:
+        columns = list(data.keys())
+    else:
+        print("Warning!!! For fetch_by_id, you should not use a config file with a directly named table and data dict.")
+        return
+
     manager = SQLManager()
 
     

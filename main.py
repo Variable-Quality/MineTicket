@@ -2,7 +2,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
-import ui as bot_ui
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
@@ -27,13 +26,18 @@ async def sync(interaction: discord.Interaction):
 @tree.command(name="setup", description="Starts the setup process")
 # Decorator to restrict this command to staff only
 # NOTE: Role is case sensitive
+# UPDATE: It turns out this doesn't work with tree.command
+# Too bad!
 @commands.has_role(STAFF_ROLE)
 async def run_setup(interaction: discord.Interaction):
     """
     Setup command to be run once the bot joins a server for the first time.
 
-    Creates necessary category, channels, and sends the initial message with a button to create tickets.
+    Creates necessary database tables, category, channels, and sends the initial message with a button to create tickets.
+
+    Should the command fail, it is safe to simply run it again after making necessary adjustments. No need to clean up partial setups
     """
+    sql.init_db(CONFIG_FILENAME)
     embed = discord.Embed(
         title="Want to open a new ticket?",
         description="Click the button below to start a new ticket.",
@@ -154,9 +158,6 @@ async def debug(interaction: discord.Interaction, text: str):
     if text == "recent":
         entry = sql.get_most_recent_entry(TABLE_NAME)
         await interaction.response.send_message(str(entry))
-
-    if text == "ui":
-        await interaction.response.send_modal(bot_ui.ticket_ui_create())
 
     if text == "setup":
         if interaction.channel.name == "create-a-ticket":

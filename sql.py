@@ -9,13 +9,11 @@ from configmanager import database_config_manager as db_cfm
 
 # There are a few better implementations of the API from what I can tell
 # Not too sure if theyre necessary to implement but we can look into it down the road
+# UPDATE: We did not have to add these in but I'm leaving this here.
 
-# TODO:
-# Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
-# Add DELETE functions other than just dropping the whole table
-# TODO:
-# Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
-
+def initial_database_creation(config:str):
+    manager = SQLManager()
+    manager.reset_to_default(config=config)
 
 class SQLManager:
 
@@ -31,10 +29,13 @@ class SQLManager:
             print(f"Improper port in config file: Non-integer character: {port}")
             sys.exit(1)
 
-        # Note: Database name is loaded from config file
+        # NOTE: 
+        # Database name is loaded from config file
         # May want to add option to be passed into constructor
         self.DATABASE = cfm.cfg["DATABASE"]["database"]
 
+    # DO NOT USE OUTSIDE OF THIS CLASS
+    # the connection here gives a direct connection to the SQL database
     def create_connection(self):
         try:
             conn = mariadb.connect(
@@ -87,8 +88,7 @@ class SQLManager:
                 conn.close()
 
     # DANGEROUS FUNCTION!!!
-    # WILL BE DEPRECIATED LATER
-    # This function exists PURELY for testing raw SQL lines, DO NOT USE IT WITH USER INPUT!!!!
+    # This function exists PURELY for running raw SQL queries, DO NOT USE IT WITH USER INPUT!!!!
     def execute(self, command, variables=None):
         conn = self.create_connection()
         cur = conn.cursor()

@@ -207,6 +207,7 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
 
     # Push it!
     ticket.push()
+
     await interaction.response.send_message(
     embed=discord.Embed(
         title="Ticket Created!",
@@ -216,6 +217,7 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     ephemeral=True, 
     delete_after=30
     )
+
     embed = discord.Embed(
         title=f"Ticket #{ticket_id}",
         description=
@@ -226,6 +228,7 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
         Description: {message}""",
         color=discord.Color.green()
     )
+    
     view = discord.ui.View()
     view.add_item(DynamicButton(ticket_id=ticket_id, button_type="claim", button_style=discord.ButtonStyle.green))
 
