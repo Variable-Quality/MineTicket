@@ -8,20 +8,12 @@ from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
 
-# This command isn't working, added sync back to startup for now
-# Todo: Fix this
-# Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
 @tree.command(name="sync", description="Syncs command list, use only when necessary")
 async def sync(interaction: discord.Interaction):
     tree.clear_commands(guild=interaction.guild)
     await tree.sync()
-    # Testing out a new way of responding
+
     interaction.response.send_message("Tree Sync'd.")
-
-
-# @bot.hybrid_command(name='name of the command', description='description of the command')
-# async def command_name(interaction: discord.Interaction):
-#        [...] The magic goes here
 
 
 @tree.command(name="setup", description="Starts the setup process")
@@ -40,7 +32,8 @@ async def run_setup(interaction: discord.Interaction):
         color=discord.Color.blue(),
     )
     # Create the "Tickets" category if it doesn't exist
-    ticket_category = discord.utils.get(interaction.guild.categories, name="Tickets")
+    ticket_category = discord.utils.get(
+        interaction.guild.categories, name="Tickets")
     if not ticket_category:
         ticket_category = await interaction.guild.create_category("Tickets")
 
@@ -62,13 +55,15 @@ async def run_setup(interaction: discord.Interaction):
 
     # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
     # This is the one channel name that is hardcoded.
-    ticket_channel = discord.utils.get(ticket_category.channels, name="create-a-ticket")
+    ticket_channel = discord.utils.get(
+        ticket_category.channels, name="create-a-ticket")
     if not ticket_channel:
         ticket_channel = await interaction.guild.create_text_channel(
             "create-a-ticket", category=ticket_category
         )
 
-    staff_channel = discord.utils.get(ticket_category.channels, name=OPEN_TICKET_CHANNEL)
+    staff_channel = discord.utils.get(
+        ticket_category.channels, name=OPEN_TICKET_CHANNEL)
     if not staff_channel:
         role_found = False
         for role in interaction.guild.roles:
@@ -95,7 +90,7 @@ async def run_setup(interaction: discord.Interaction):
             )
         }
         staff_channel = await interaction.guild.create_text_channel(
-            #NOTE:
+            # NOTE:
             # Staff channel may want to be elsewhere
             # But it'll be alright to allow them to move it wherever they like after its created
             OPEN_TICKET_CHANNEL, category=ticket_category, overwrites=overwrites
@@ -104,7 +99,8 @@ async def run_setup(interaction: discord.Interaction):
     table.push()
     # Create a DynamicButton instance via bot_managers.py
     view = discord.ui.View()
-    create_ticket_button = DynamicButton(ticket_id=1, button_type="open", button_style=discord.ButtonStyle.gray)
+    create_ticket_button = DynamicButton(
+        ticket_id=1, button_type="open", button_style=discord.ButtonStyle.gray)
     view.add_item(create_ticket_button)
     await ticket_channel.send(embed=embed, view=view)
 
@@ -119,33 +115,22 @@ async def run_setup(interaction: discord.Interaction):
         ephemeral=True
     )
 
-# NOTE:
-# Originally we had planned to leave this command here
-# However, we didn't think it made sense to spawn a modal anywhere and anywhere
-# So we relegated it to just the button 
-# Additionally we changed how info is taken in for tickets, almost requiring a modal
-# So now its here, in a kinda graveyard.
 
-# @tree.command(name="open_ticket", description="Opens a ticket")
-# async def open_ticket(interaction: discord.Interaction):
-#     await create_ticket_helper(interaction)
-
-# May wanna rename commands to be easier to type
-# Like just claim instead of claim_ticket
 @tree.command(name="claim_ticket", description="Claim a support ticket")
 @commands.has_role(STAFF_ROLE)
-async def claim_ticket(interaction: discord.Interaction, ticket_number:int=None):
-    
+async def claim_ticket(interaction: discord.Interaction, ticket_number: int = None):
+
     await claim_ticket_helper(interaction, ticket_number)
 
+
 @tree.command(name="close_ticket", description="Close the current ticket")
-async def close_ticket(interaction: discord.Interaction, ticket_number:int=None):
+async def close_ticket(interaction: discord.Interaction, ticket_number: int = None):
 
     await close_ticket_helper(interaction, ticket_number)
 
 
 # Will be removed with final version
-@tree.command(name="debug",description="Debug command for doing whatever you need it to do because caching is a cunt")
+@tree.command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
 async def debug(interaction: discord.Interaction, text: str):
     if text == "reset all":
         sql.reset_to_default(debug_entry=False)
@@ -167,13 +152,13 @@ async def debug(interaction: discord.Interaction, text: str):
                 color=discord.Color.blue(),
             )
             # Create a Buttons instance via buttons.py
-            #buttons = Buttons()
+            # buttons = Buttons()
             # Add button
-            #buttons.add_item(
+            # buttons.add_item(
             #    discord.ui.Button(
             #        style=discord.ButtonStyle.primary, label="Start A Ticket"
             #    )
-            #)
+            # )
             # Send message with button
             await interaction.channel.send(embed=embed)
 
@@ -194,9 +179,6 @@ async def debug(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("My button should open a ticket for ticket 2 because ticket 1 is a debug entry and wont work!", view=view)
         message = await interaction.original_response()
         print(discord.ui.View.from_message(message).children[0])
-
-
-
 
 
 bot.run(token=TOKEN)
