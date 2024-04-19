@@ -140,7 +140,17 @@ class TableEntry:
 # Periodic check to ensure messages have not been otherwise handled
 # Create this table alongside everything else
 class json_table_manager:
+    """
+    Description:
+    A quick and dirty table manager for tickets created through the JSON interface.
 
+    Available Methods:
+    get_messages(id:int)
+
+    add_message(message:discord.Message, id:int)
+
+    remove_message(message_id:int, id:int)
+    """
     def __init__(self, table_exists=True):
         self._manager = SQLManager()
         self.data = {"id": "PRIMARY KEY",
@@ -148,10 +158,10 @@ class json_table_manager:
         if not table_exists:
             self._manager.create_table("json_messages", self.data, is_serial=False)
 
-    def get_messages(self, id:int):
+    def get_messages(self, id:int) -> str:
         return fetch_by_id(id=id, config=None, table="json_messages", data=self.data).message_ids
 
-    def add_message(self, message:discord.Message, id:int):
+    def add_message(self, message:discord.Message, id:int) -> None:
         existing_entry = fetch_by_id(id=id, config=None, table="json_messages", data=self.data)
         if existing_entry:
             messages = existing_entry.message_ids + f",{message.id}"
@@ -159,7 +169,7 @@ class json_table_manager:
         else:
             self._manager.insert(table="json_messages", columns=list(self.data.keys()), values=[id, message.id])
 
-    def remove_message(self, message_id:int, id:int):
+    def remove_message(self, message_id:int, id:int) -> None:
         existing_entry = fetch_by_id(id=id, config=None, table="json_messages", data=self.data)
         try:
             entry_messages = existing_entry.message_ids.split(",")
@@ -167,7 +177,6 @@ class json_table_manager:
             pass
 
         if len(entry_messages) > 1:
-            str.replace()
             new_messages = existing_entry.message_ids.replace(str(message_id), "").split(",")
             new_entry = new_messages[0]
             if len(new_messages) > 1:
@@ -243,12 +252,15 @@ def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
 
 
 # Allows access to the function in sql.py of the same name
-# TODO:
-# Pull entry into a TableEntry object rather than just a list
 def get_most_recent_entry(table, only_id=False):
     manager = SQLManager()
     entry = manager.get_most_recent_entry(table, only_id)
     return entry
+
+# Pulls all items from a table
+def pull_all_items(table):
+    manager = SQLManager()
+    return manager.get_all_items(table)
 
 
 # Returns a player object given an interaction

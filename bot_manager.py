@@ -7,6 +7,7 @@ import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 import sql_interface as sql
 import re
+from cogs import JSONCog
 
 CONFIG_FILENAME = None
 CFM = db_cfm(filename=CONFIG_FILENAME)
@@ -16,20 +17,15 @@ INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
 
-# Unused, is the guild ID of our test server
-SERVER_ID = 1207398486933508147
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
-        # You can alternatively use ! as a command prefix instead of slash commands
-        # Trying to fix as it sometimes does not work
         self.json_parser = None
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
-        # Since the sync command doesnt wanna work, fuck it
         await tree.sync()
-
+        json_helper_cog = JSONCog(bot)
         # Initialize the ParseJSON instance inside on_ready
         if self.guilds:
             self.json_parser = json.ParseJSON(self, self.guilds[0])
@@ -51,7 +47,10 @@ class Bot(discord.Client):
         # Makes DynamicButton a persistent class
         # Avoids a lot of hassle with persistent views
         self.add_dynamic_items(DynamicButton)
+        # All we have to do here is create the helper cog
+        
 
+# Quick little helper function for add_user_helper
 def find_user(name, members: list):
     for member in members:
         if member.nick is not None:
@@ -228,7 +227,7 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
         Description: {message}""",
         color=discord.Color.green()
     )
-    
+
     view = discord.ui.View()
     view.add_item(DynamicButton(ticket_id=ticket_id, button_type="claim", button_style=discord.ButtonStyle.green))
 

@@ -7,16 +7,6 @@ from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
 
-# This command isn't working, added sync back to startup for now
-# Todo: Fix this
-# Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
-@tree.command(name="sync", description="Syncs command list, use only when necessary")
-async def sync(interaction: discord.Interaction):
-    tree.clear_commands(guild=interaction.guild)
-    await tree.sync()
-    # Testing out a new way of responding
-    interaction.response.send_message("Tree Sync'd.")
-
 
 # @bot.hybrid_command(name='name of the command', description='description of the command')
 # async def command_name(interaction: discord.Interaction):

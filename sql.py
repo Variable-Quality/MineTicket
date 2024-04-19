@@ -374,6 +374,27 @@ class SQLManager:
             return result[0]
         else:
             return result[0][0]
+        
+    # Fetches all items in a given table
+    # Be careful using this, large tables can cause a slowdown
+    def get_all_items(self, table:str):
+        safe_table = re.sub(r"[^0-9A-Za-z]", "", table)
+        sql = f"SELECT * FROM {safe_table} ORDER BY id DESC"
+        try:
+            # Create a connection, insert the data, close the connection.
+            conn = self.create_connection()
+            cur = conn.cursor()
+            cur.execute(sql)
+            result = cur.fetchall()
+            conn.commit()
+        except mariadb.Error as e:
+            print(f"Database error in get_most_recent_entry statement: {e}")
+        finally:
+            if conn:
+                conn.close()
+        
+        return result
+
 
 
 # Only runs when this py file is run by itself
