@@ -25,12 +25,12 @@ class Bot(discord.Client):
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
         await tree.sync()
-        json_helper_cog = JSONCog(bot)
         # Initialize the ParseJSON instance inside on_ready
         if self.guilds:
             self.json_parser = json.ParseJSON(self, self.guilds[0])
         else:
             print("No guilds found. JSON parsing functionality will not be available.")
+        json_helper_cog = JSONCog(bot)
 
     async def on_message(self, message):
         # Fix for ephemeral messages throwing errors

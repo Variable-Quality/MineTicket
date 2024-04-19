@@ -9,7 +9,17 @@ class ParseJSON:
     def __init__(self, bot, guild):
         self.bot = bot
         self.guild = guild
+        self.manager = sql.json_table_manager()
 
+    def setup_listener(self):
+    # This section may not be necessary in a bit, we will see
+        @self.client.event
+        async def on_message(message):
+            if (
+                message.channel.name == "intake"
+                and message.channel.category.name == "Tickets"
+            ):
+                await self.parse_json_message(message)
     async def parse_json_message(self, message):
         """
         Parses the JSON message and triggers the appropriate event handler based on the event type.
@@ -109,8 +119,9 @@ class ParseJSON:
 
             view = discord.ui.View()
             view.add_item(DynamicButton(ticket_id=ticket_id, button_type="claim", button_style=discord.ButtonStyle.green))
-
-            await mineticket_staff_channel.send(embed=embed, view=view)
+            
+            msg = await mineticket_staff_channel.send(embed=embed, view=view)
+            self.manager.add_message(msg, ticket_id)
         except Exception as e:
             print(f"Error creating ticket: {str(e)}")
 

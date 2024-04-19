@@ -1,6 +1,11 @@
 from bot_manager import *
 from discord.ext import tasks, commands
+from configmanager import database_config_manager as db_cfm
 import sql_interface as sql
+
+CONFIG_FILENAME = None
+CFM = db_cfm(filename=CONFIG_FILENAME)
+OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
 
 class JSONCog(commands.Cog):
     def __init__(self, bot: discord.Client):
