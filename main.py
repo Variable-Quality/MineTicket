@@ -2,7 +2,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
-import ui as bot_ui
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
@@ -34,6 +33,12 @@ async def run_setup(interaction: discord.Interaction):
 
     Creates necessary category, channels, and sends the initial message with a button to create tickets.
     """
+    # Quick check to see if user has proper role
+    staff_role = discord.utils.find(lambda r: r.name == STAFF_ROLE, interaction.guild.roles)
+    if staff_role not in interaction.user.roles:
+        return
+
+
     embed = discord.Embed(
         title="Want to open a new ticket?",
         description="Click the button below to start a new ticket.",
@@ -44,6 +49,11 @@ async def run_setup(interaction: discord.Interaction):
     if not ticket_category:
         ticket_category = await interaction.guild.create_category("Tickets")
 
+    # Creat the archive category
+    ticket_archive = discord.utils.get(interaction.guild.categories, name="ticket-archive")
+    if not ticket_archive:
+        ticket_category = await interaction.guild.create_category("ticket-archive")
+        
     # Create the json recieving channel within the "Tickets" category if it doesn't exist
     mineticket_feed_channel = discord.utils.get(
         ticket_category.channels, name=INTAKE_CHANNEL
@@ -142,58 +152,6 @@ async def claim_ticket(interaction: discord.Interaction, ticket_number:int=None)
 async def close_ticket(interaction: discord.Interaction, ticket_number:int=None):
 
     await close_ticket_helper(interaction, ticket_number)
-
-
-# Will be removed with final version
-@tree.command(name="debug",description="Debug command for doing whatever you need it to do because caching is a cunt")
-async def debug(interaction: discord.Interaction, text: str):
-    if text == "reset all":
-        sql.reset_to_default(debug_entry=False)
-        await interaction.response.send_message("Database Reset!")
-
-    if text == "recent":
-        entry = sql.get_most_recent_entry(TABLE_NAME)
-        await interaction.response.send_message(str(entry))
-
-    if text == "ui":
-        await interaction.response.send_modal(bot_ui.ticket_ui_create())
-
-    if text == "setup":
-        if interaction.channel.name == "create-a-ticket":
-            # Create an embed message
-            embed = discord.Embed(
-                title="Want to start a ticket?",
-                description="Click the button below to start a new ticket.",
-                color=discord.Color.blue(),
-            )
-            # Create a Buttons instance via buttons.py
-            #buttons = Buttons()
-            # Add button
-            #buttons.add_item(
-            #    discord.ui.Button(
-            #        style=discord.ButtonStyle.primary, label="Start A Ticket"
-            #    )
-            #)
-            # Send message with button
-            await interaction.channel.send(embed=embed)
-
-            # Send confirmation
-            await interaction.channel.send(
-                "Setup complete! The button is now available in the #tickets channel."
-            )
-        else:
-            await interaction.channel.send("Whoopsie doo")
-
-    if text == "button":
-        await interaction.response.send_message("I'm a button message!", view=ButtonOpen(custom_id=7))
-
-    if text == "dynamic":
-        # b = return_button("Claim", "button:open:1")
-        view = discord.ui.View(timeout=None)
-        view.add_item(DynamicButton(ticket_id=2, button_type="channel"))
-        await interaction.response.send_message("My button should open a ticket for ticket 2 because ticket 1 is a debug entry and wont work!", view=view)
-        message = await interaction.original_response()
-        print(discord.ui.View.from_message(message).children[0])
 
 
 

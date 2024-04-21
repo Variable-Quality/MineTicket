@@ -27,7 +27,6 @@ class Bot(discord.Client):
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
-        # Since the sync command doesnt wanna work, fuck it
         await tree.sync()
 
         # Initialize the ParseJSON instance inside on_ready
@@ -462,6 +461,8 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         elif self.button_type == "channel":
             await create_channel_helper(interaction, self.id)
         elif self.button_type == "close":
+            archive_category = discord.utils.get(interaction.guild.channels, name="ticket-archive")
+            await interaction.channel.edit(name=f"{interaction.channel.name}-closed", category=archive_category)
             await close_ticket_helper(interaction, self.id)
         elif self.button_type == "open":
             modal = TicketModal()

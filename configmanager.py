@@ -108,3 +108,9 @@ class database_config_manager:
             self.filename = filename
         with open(self.filename, "r") as f:
             self.cfg.read(f)
+
+if __name__ == "__main__":
+    # Creates a default config, then writes it to the config directory.
+    # Worth noting that this will write the token into the config file so be wary
+    c = database_config_manager()
+    c.write()
