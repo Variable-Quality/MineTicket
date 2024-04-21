@@ -6,7 +6,9 @@ CONFIG_LOCATION = "config"
 
 
 # Really basic config file manager, mostly made it to have it
+##### Delete: it will be - Art #####
 # Not sure if it'll be useful
+##### Delete END #####
 class config_manager:
 
     def __init__(self, filename: str):

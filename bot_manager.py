@@ -15,19 +15,24 @@ TABLE_NAME = CFM.cfg["DATABASE"]["table"]
 INTAKE_CHANNEL = CFM.cfg["BOT"]["intake_channel"]
 STAFF_ROLE = CFM.cfg["BOT"]["staff_role"]
 OPEN_TICKET_CHANNEL = CFM.cfg["BOT"]["staff_channel"]
-
+##### Delete: unused as stated - Art #####
 # Unused, is the guild ID of our test server
 SERVER_ID = 1207398486933508147
+##### Delete END #####
 class Bot(discord.Client):
     def __init__(self, intents):
         super().__init__(intents=intents)
+        ##### Delete: Outdated, rip ! fr also a relic of the past - Art #####
         # You can alternatively use ! as a command prefix instead of slash commands
         # Trying to fix as it sometimes does not work
+        ##### Delete END #####
         self.json_parser = None
 
     async def on_ready(self):
         print(f"Logged in as {self.user}!")
+        ##### Delete: bad DJ, do not freak da bot - Art #####
         # Since the sync command doesnt wanna work, fuck it
+        ##### Delete END #####
         await tree.sync()
 
         # Initialize the ParseJSON instance inside on_ready
@@ -37,7 +42,9 @@ class Bot(discord.Client):
             print("No guilds found. JSON parsing functionality will not be available.")
 
     async def on_message(self, message):
+        ##### Delete: fix complete - Art #####
         # Fix for ephemeral messages throwing errors
+        ##### Delete END #####
         if type(message.channel) is discord.DMChannel:
             return
         print(
@@ -48,8 +55,10 @@ class Bot(discord.Client):
             await self.json_parser.parse_json_message(message)
 
     async def setup_hook(self) -> None:
+        ##### Delete: Fix complete, thank you DJ - Art #####
         # Makes DynamicButton a persistent class
         # Avoids a lot of hassle with persistent views
+        ##### Delete END #####
         self.add_dynamic_items(DynamicButton)
 
 def find_user(name, members: list):
@@ -64,9 +73,10 @@ def find_user(name, members: list):
     return None
 
 async def add_user_helper(interaction: discord.Interaction, ticket_id):
-
+    ##### Delete: bro fr threw his hands up in the air - Art #####
     # This assumes the interaction takes place inside of the ticket channel
     # Oh well!
+    ##### Delete END #####
     channel = interaction.channel
     def check(m):
         return m.channel == interaction.channel
@@ -191,14 +201,18 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
     table_dict = {
         "id": ticket_id,
         "involved_players_discord": str(interaction.user.id),
+        ##### Delete: maybe this is more a modify, like Add MCAuth here to grab MC user - Art #####
         # TODO:
         # Add logic to look up player's ingame minecraft name, or vice versa
+        ##### Delete END #####
         "involved_players_minecraft": "",
         "involved_staff_discord": "",
         "involved_staff_minecraft": "",
         "status": "open",
+        ##### Delete: todo - Art #####
         # TODO:
         # Update message field with info player fills in from UI
+        ##### Delete END #####
         "message": message,
     }
 
@@ -234,9 +248,11 @@ async def create_ticket_helper(interaction: discord.Interaction, info:dict):
 async def claim_ticket_helper(interaction: discord.Interaction, ticket_num=None, view=None):
     # Check if in ticket channel
     # Check role, ex staff
+    ##### Delete: funni link - Art #####
     # TODO:
     # Move role checks to dynamic button interaction_check func
     # https://discordpy.readthedocs.io/en/latest/interactions/api.html#discord.ui.DynamicItem.interaction_check
+    ##### Delete END #####
     ticket_id = ticket_num
     staff_role = discord.utils.get(interaction.guild.roles, name=STAFF_ROLE)
     if staff_role and staff_role in interaction.user.roles:
@@ -342,9 +358,11 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
             )
             interaction.response.send_message(embed=embed, ephemeral=True)
             return
+    ##### Delete: manual archive by staff - Art #####
     # Archive command here
     # await interaction.channel.delete()
     # Notify channel is closed, dont delete yet
+    ##### Delete END #####
     entry = sql.fetch_by_id(ticket_id, CONFIG_FILENAME)
     entry.status = "closed"
     if ticket_channel: 
@@ -365,7 +383,7 @@ async def close_ticket_helper(interaction: discord.Interaction, ticket_num=None)
             color=discord.Color.blue()
         )
     )
-
+##### Delete: Notes on buttons #####
 """
 ===========================================================================
 ==================================BUTTONS==================================
@@ -385,8 +403,10 @@ What are the button states?
     Chat is unusable
 
 """
+##### Delete END #####
 class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button:(?P<type>[a-zA-Z]+):(?P<id>[0-9]+)'):
     def __init__(self, *, ticket_id, button_type:str, button_style:discord.ButtonStyle=discord.ButtonStyle.green) -> None:
+        ##### Delete: personal notes - Art #####
         """
         Possible Button Types:
 
@@ -398,6 +418,7 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         open: Creates a new ticket
         
         """
+        ##### Delete END #####
         button_type = button_type.lower()
         
 
@@ -434,17 +455,21 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
     async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match: re.Match[str], /):
         id = str(match['id'])
         button_type = str(match['type']).lower()
+        ##### Delete: eeee - Art #####
         # This elif chain feels redundant
         # It's basically a copy/paste of the init function
+        ##### Delete END #####
         if button_type == "close":
             style = discord.ButtonStyle.red
         elif button_type == "channel":
             style = discord.ButtonStyle.blurple
         elif button_type == "open":
             style = discord.ButtonStyle.gray
+            ##### Delete aaaa - Art #####
             # This ID never gets used
             # create_ticket_helper gets its own ID when it's called
             # But if we call the constructor without an ID it gets fussy about not matching the template so
+            ##### Delete END #####
             try:
                 id = str(sql.get_most_recent_entry(TABLE_NAME, True)+1)
             except IndexError:
@@ -452,11 +477,15 @@ class DynamicButton(discord.ui.DynamicItem[discord.ui.Button], template=r'button
         else:
             style = discord.ButtonStyle.green
         return cls(ticket_id=id, button_type=button_type, button_style=style)
+        ##### Delete: gone - Art #####
         # await claim_ticket_helper(interaction)
+        ##### Delete END #####
     
     async def callback(self, interaction: discord.Interaction) -> None:
+        ##### Delete: implement done - Art #####
         #TODO: 
         # implement add button
+        ##### Delete END #####
         if self.button_type == "claim":
             await claim_ticket_helper(interaction, self.id)
         elif self.button_type == "channel":
@@ -495,8 +524,10 @@ class ButtonOpen(discord.ui.View):
     async def claimButton(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
+        ##### Delete: link - Art #####
         # https://stackoverflow.com/questions/74426018/attributeerror-button-object-has-no-attribute-response
         # We had a few attribute errors and this might be the right fix.
+        ##### Delete END #####
         await interaction.message.delete()
         await claim_ticket_helper(interaction, ticket_num=self.ticket_id, view=ButtonClaimed(custom_id=self.ticket_id))
 
@@ -552,8 +583,10 @@ class ButtonClaimed(discord.ui.View):
         )
         await interaction.response.send_message(embed=embed, view=ButtonClosed(ticket_id=ticket_id))
 
+    ##### Delete: todo - Art #####
     # TODO:
-    # Move this button into the actual 
+    # Move this button into the actual
+    ##### Delete END ##### 
     @discord.ui.button(label="Add User", style=discord.ButtonStyle.green, custom_id="add_user")
     async def add_user_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
@@ -685,8 +718,10 @@ class ButtonTicket(discord.ui.View):
         )
         await interaction.response.send_message(embed=embed, view=ButtonClosed(ticket_id=ticket_id))
 
+    ##### Delete: todo - Art #####
     # TODO:
-    # Move this button into the actual 
+    # Move this button into the actual
+    ##### Delete END ##### 
     @discord.ui.button(label="Add User", style=discord.ButtonStyle.green, custom_id="add_staff")
     async def add_user_button(
         self, interaction: discord.Interaction, button: discord.ui.Button
@@ -748,8 +783,10 @@ class TicketOpen(discord.ui.View):
     async def claimButton(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
+        ##### Delete: todo - Art #####
         #TODO:
         # Integrate GUI popup with this button
+        ##### Delete END #####
         await create_ticket_helper(interaction)
         embed = discord.Embed(
             title="Ticket Created!",

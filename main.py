@@ -2,19 +2,19 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import sql_interface as sql
-import ui as bot_ui
+import ui as bot_ui ##### Modify: idk why but this is tossing a import error on my end - Art #####
 import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
-
+##### Delete: I don't think we need to every sync the commands ever - Art #####
 @tree.command(name="sync", description="Syncs command list, use only when necessary")
 async def sync(interaction: discord.Interaction):
     tree.clear_commands(guild=interaction.guild)
     await tree.sync()
 
     interaction.response.send_message("Tree Sync'd.")
-
+##### Delete END #####
 
 @tree.command(name="setup", description="Starts the setup process")
 # Decorator to restrict this command to staff only
@@ -23,7 +23,6 @@ async def sync(interaction: discord.Interaction):
 async def run_setup(interaction: discord.Interaction):
     """
     Setup command to be run once the bot joins a server for the first time.
-
     Creates necessary category, channels, and sends the initial message with a button to create tickets.
     """
     embed = discord.Embed(
@@ -31,13 +30,13 @@ async def run_setup(interaction: discord.Interaction):
         description="Click the button below to start a new ticket.",
         color=discord.Color.blue(),
     )
-    # Create the "Tickets" category if it doesn't exist
+    # Create the "Tickets" category
     ticket_category = discord.utils.get(
         interaction.guild.categories, name="Tickets")
     if not ticket_category:
         ticket_category = await interaction.guild.create_category("Tickets")
 
-    # Create the json recieving channel within the "Tickets" category if it doesn't exist
+    # Create the json recieving channel within the "Tickets" category
     mineticket_feed_channel = discord.utils.get(
         ticket_category.channels, name=INTAKE_CHANNEL
     )
@@ -53,7 +52,7 @@ async def run_setup(interaction: discord.Interaction):
             INTAKE_CHANNEL, category=ticket_category, overwrites=overwrites
         )
 
-    # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
+    # Create the "create-a-ticket" channel within the "Tickets" category
     # This is the one channel name that is hardcoded.
     ticket_channel = discord.utils.get(
         ticket_category.channels, name="create-a-ticket")
@@ -128,7 +127,7 @@ async def close_ticket(interaction: discord.Interaction, ticket_number: int = No
 
     await close_ticket_helper(interaction, ticket_number)
 
-
+##### Delete: Thank you debug for all the help, rest well. - Art #####
 # Will be removed with final version
 @tree.command(name="debug", description="Debug command for doing whatever you need it to do because caching is a cunt")
 async def debug(interaction: discord.Interaction, text: str):
@@ -179,6 +178,6 @@ async def debug(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("My button should open a ticket for ticket 2 because ticket 1 is a debug entry and wont work!", view=view)
         message = await interaction.original_response()
         print(discord.ui.View.from_message(message).children[0])
-
+##### Delete END #####
 
 bot.run(token=TOKEN)

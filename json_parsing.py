@@ -1,11 +1,12 @@
 import discord
 import json as pyjson
 import sql_interface as sql
-from configmanager import database_config_manager as db_cfm
+from configmanager import database_config_manager as db_cfm # modify this since db_cfm doesnt exisit 
 from bot_manager import *
 
+##### Delete: i think palmer wrote this - Art #####
 # Solomon/DJ - when you get to this point in the merge - We need the naming of the buttons to change into what they are *now* with the new stuff. THis was written for the old way of doing buttons.
-
+##### Delete END #####
 
 
 class ParseJSON:
@@ -14,7 +15,9 @@ class ParseJSON:
         self.guild = guild
 
     def setup_listener(self):
+        ##### Delete: yeah i dont even think we need the on_message but i dont wanna delete that since final deliver lol - Art #####
         # This section may not be necessary in a bit, we will see
+        ##### Delete END #####
         @self.client.event
         async def on_message(message):
             if (
@@ -120,7 +123,7 @@ class ParseJSON:
         except Exception as e:
             print(f"Error creating ticket: {str(e)}")
 
-    async def claim_event(self, ticket_id, user_uuid, discord_id): ##uuid not used for some reason?
+    async def claim_event(self, ticket_id, user_uuid, discord_id): ##uuid not used for some reason? ##### Yeah UUID basically just be hanging
         """
         Claims a ticket by updating the ticket status and assigning the staff member.
 

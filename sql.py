@@ -10,12 +10,13 @@ from configmanager import database_config_manager as db_cfm
 # There are a few better implementations of the API from what I can tell
 # Not too sure if theyre necessary to implement but we can look into it down the road
 
+##### Delete todo #####
 # TODO:
 # Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
 # Add DELETE functions other than just dropping the whole table
 # TODO:
 # Update all re.sub functions to ''.join(filter(str.isalpha, string)) (roughly 2x as fast)
-
+##### Delete END #####
 
 class SQLManager:
 
@@ -86,6 +87,7 @@ class SQLManager:
             if conn:
                 conn.close()
 
+    ##### Delete: kill with fire #####
     # DANGEROUS FUNCTION!!!
     # WILL BE DEPRECIATED LATER
     # This function exists PURELY for testing raw SQL lines, DO NOT USE IT WITH USER INPUT!!!!
@@ -98,6 +100,7 @@ class SQLManager:
             cur.execute(command)
         conn.commit()
         conn.close()
+    ##### Delete END #####
 
     # Takes in a list of columns and a table, returns all information from the select statement.
     # where_conditions should be formatted as a dictionary.
@@ -139,8 +142,10 @@ class SQLManager:
                 safe_keys.append(safe_key)
 
             sql += f" WHERE {safe_keys[0]}=?"
+            ##### Delete: no or #####
             # TODO:
             # Implement OR statements
+            ##### Delete END #####
             if len(safe_keys) > 1:
                 for key in safe_keys[1:]:
                     sql += f" AND {key}="
@@ -157,9 +162,11 @@ class SQLManager:
             conn = self.create_connection()
             cur = conn.cursor()
 
+            ##### Delete debug#####
             # DEBUGGING
             # print(f"\n{sql}\n")
             # If no conditions, ignore the parameters
+            ##### Delete END #####
             if where_conditions:
                 cur.execute(sql, params)
             else:
@@ -203,8 +210,10 @@ class SQLManager:
         q_marks = "?, " * (len(safe_columns) - 1)
         inputs = "(" + q_marks + "?)"
         sql = f"INSERT INTO {safe_table} {columns_string} VALUES {inputs}"
+        ##### Delete: debug #####
         # DEBUGGING
         # print(f"INSERT SQL: \n{sql}\n VALUES: {safe_values}\n")
+        ##### Delete END #####
         params = safe_values
         try:
             # Create a connection, insert the data, close the connection.
@@ -229,8 +238,10 @@ class SQLManager:
             regex = r"[^0-9A-Za-z()_]"
             temp_tuple = (re.sub(regex, "", key), re.sub(regex, "", table_data[key]))
             safe_table_data.append(temp_tuple)
+        ##### Delete: lmao thank u DJ - Art #####
         # Palmer/Art apprach (Sorry DJ)
         # Fix is a fix is a fix, great work guys - DJ
+        ##### Delete END #####
         if is_serial:
             table_data_string = "(id SERIAL PRIMARY KEY, "
         else:
@@ -259,8 +270,10 @@ class SQLManager:
         sql = f"CREATE TABLE IF NOT EXISTS {safe_table} {table_data_string}"
         
         """
+        ##### Delete: debug - Art #####
         # DEBUGGING
         # print(f"\n{sql}\n")
+        ##### Delete END #####
         try:
             # Create a connection, insert the data, close the connection.
             conn = self.create_connection()
@@ -273,6 +286,7 @@ class SQLManager:
             if conn:
                 conn.close()
 
+    ##### Delete: drop the bomb - Art #####
     # Drops a table
     # This is likely to be removed once the project is deployed, since we dont want old info being deleted.
     def drop_table(self, table: str):
@@ -290,6 +304,7 @@ class SQLManager:
         finally:
             if conn:
                 conn.close()
+    ##### Delete END ##### 
 
     def delete_row(self, table: str, variable: str, value: str, type: str):
         # You know the drill
@@ -375,9 +390,10 @@ class SQLManager:
         else:
             return result[0][0]
 
-
+##### Delete debug #####
 # Only runs when this py file is run by itself
 # This is basically just my debugging
+##### Delete END #####
 if __name__ == "__main__":
     s = SQLManager()
     s.reset_to_default()
