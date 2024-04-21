@@ -28,8 +28,8 @@ async def run_setup(interaction: discord.Interaction):
     staff_role = discord.utils.find(lambda r: r.name == STAFF_ROLE, interaction.guild.roles)
     if staff_role not in interaction.user.roles:
         return
-
-
+    
+    
     embed = discord.Embed(
         title="Want to open a new ticket?",
         description="Click the button below to start a new ticket.",
