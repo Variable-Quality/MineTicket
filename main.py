@@ -6,22 +6,14 @@ import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
-
-# This command isn't working, added sync back to startup for now
-# Todo: Fix this
-# Found a way to fix it - https://stackoverflow.com/questions/74413367/how-to-sync-slash-command-globally-discord-py
+##### Delete: I don't think we need to every sync the commands ever - Art #####
 @tree.command(name="sync", description="Syncs command list, use only when necessary")
 async def sync(interaction: discord.Interaction):
     tree.clear_commands(guild=interaction.guild)
     await tree.sync()
-    # Testing out a new way of responding
+
     interaction.response.send_message("Tree Sync'd.")
-
-
-# @bot.hybrid_command(name='name of the command', description='description of the command')
-# async def command_name(interaction: discord.Interaction):
-#        [...] The magic goes here
-
+##### Delete END #####
 
 @tree.command(name="setup", description="Starts the setup process")
 # Decorator to restrict this command to staff only
@@ -30,7 +22,6 @@ async def sync(interaction: discord.Interaction):
 async def run_setup(interaction: discord.Interaction):
     """
     Setup command to be run once the bot joins a server for the first time.
-
     Creates necessary category, channels, and sends the initial message with a button to create tickets.
     """
     # Quick check to see if user has proper role
@@ -44,8 +35,9 @@ async def run_setup(interaction: discord.Interaction):
         description="Click the button below to start a new ticket.",
         color=discord.Color.blue(),
     )
-    # Create the "Tickets" category if it doesn't exist
-    ticket_category = discord.utils.get(interaction.guild.categories, name="Tickets")
+    # Create the "Tickets" category
+    ticket_category = discord.utils.get(
+        interaction.guild.categories, name="Tickets")
     if not ticket_category:
         ticket_category = await interaction.guild.create_category("Tickets")
 
@@ -70,15 +62,17 @@ async def run_setup(interaction: discord.Interaction):
             INTAKE_CHANNEL, category=ticket_category, overwrites=overwrites
         )
 
-    # Create the "create-a-ticket" channel within the "Tickets" category if it doesn't exist
+    # Create the "create-a-ticket" channel within the "Tickets" category
     # This is the one channel name that is hardcoded.
-    ticket_channel = discord.utils.get(ticket_category.channels, name="create-a-ticket")
+    ticket_channel = discord.utils.get(
+        ticket_category.channels, name="create-a-ticket")
     if not ticket_channel:
         ticket_channel = await interaction.guild.create_text_channel(
             "create-a-ticket", category=ticket_category
         )
 
-    staff_channel = discord.utils.get(ticket_category.channels, name=OPEN_TICKET_CHANNEL)
+    staff_channel = discord.utils.get(
+        ticket_category.channels, name=OPEN_TICKET_CHANNEL)
     if not staff_channel:
         role_found = False
         for role in interaction.guild.roles:
@@ -105,7 +99,7 @@ async def run_setup(interaction: discord.Interaction):
             )
         }
         staff_channel = await interaction.guild.create_text_channel(
-            #NOTE:
+            # NOTE:
             # Staff channel may want to be elsewhere
             # But it'll be alright to allow them to move it wherever they like after its created
             OPEN_TICKET_CHANNEL, category=ticket_category, overwrites=overwrites
@@ -114,7 +108,8 @@ async def run_setup(interaction: discord.Interaction):
     table.push()
     # Create a DynamicButton instance via bot_managers.py
     view = discord.ui.View()
-    create_ticket_button = DynamicButton(ticket_id=1, button_type="open", button_style=discord.ButtonStyle.gray)
+    create_ticket_button = DynamicButton(
+        ticket_id=1, button_type="open", button_style=discord.ButtonStyle.gray)
     view.add_item(create_ticket_button)
     await ticket_channel.send(embed=embed, view=view)
 
@@ -129,27 +124,16 @@ async def run_setup(interaction: discord.Interaction):
         ephemeral=True
     )
 
-# NOTE:
-# Originally we had planned to leave this command here
-# However, we didn't think it made sense to spawn a modal anywhere and anywhere
-# So we relegated it to just the button 
-# Additionally we changed how info is taken in for tickets, almost requiring a modal
-# So now its here, in a kinda graveyard.
 
-# @tree.command(name="open_ticket", description="Opens a ticket")
-# async def open_ticket(interaction: discord.Interaction):
-#     await create_ticket_helper(interaction)
-
-# May wanna rename commands to be easier to type
-# Like just claim instead of claim_ticket
 @tree.command(name="claim_ticket", description="Claim a support ticket")
 @commands.has_role(STAFF_ROLE)
-async def claim_ticket(interaction: discord.Interaction, ticket_number:int=None):
-    
+async def claim_ticket(interaction: discord.Interaction, ticket_number: int = None):
+
     await claim_ticket_helper(interaction, ticket_number)
 
+
 @tree.command(name="close_ticket", description="Close the current ticket")
-async def close_ticket(interaction: discord.Interaction, ticket_number:int=None):
+async def close_ticket(interaction: discord.Interaction, ticket_number: int = None):
 
     await close_ticket_helper(interaction, ticket_number)
 

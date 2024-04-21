@@ -21,9 +21,10 @@ class Player:
     def __int__(self):
         return int(self.discord_id)
 
-
+##### Delete: Remove commmentttt - aRt #####
 # Table object
 # Not too useful now, maybe make the primary way of interacting with tables?
+##### Delete END #####
 class Table:
 
     def __init__(self, config:str=None):
@@ -49,7 +50,9 @@ class Table:
 
 
 class TableEntry:
+    ##### Delete: todo - Art #####
     # TODO: Dynamic Column names, maybe add origin server?
+    ##### Delete END #####
 
     # Data handler class for a ticket. Contains everything a ticket should.
     # Leave ID as none if the ticket is not in the DB yet.
@@ -70,9 +73,10 @@ class TableEntry:
             self.__dict__[key] = self.table_dict[key]
 
         self.columns = list(self.table_dict.keys())[1:]
-
+    ##### Delete: i see - Art #####
     # Janky workaround to update dict items to match class attributes
     # Could move this to the update() function, or push(), or both
+    ##### Delete END #####
     def update_dict(self):
         for key in self.table_dict.keys():
             self.table_dict[key] = self.__dict__[key]
@@ -129,12 +133,13 @@ class TableEntry:
         for key in list(self.table_dict.keys())[1:]:
             values.append(self.table_dict[key])
         self._manager.update_row(self.cfm.cfg["DATABASE"]["table"], self.columns, values, self.id)
-
+##### Delete: remove todo #####
 # Quick and dirty table manager for the JSON parsing
 # Makes sure we clean up any messages created by/closed by the JSON
 # TODO:
 # Periodic check to ensure messages have not been otherwise handled
 # Create this table alongside everything else
+##### Delete END #####
 class json_table_manager:
 
     def __init__(self, table_exists=True):
@@ -206,10 +211,11 @@ def fetch_by_status(status: str, cfg:str=None, max: int = 0) -> list:
 
     return entries
 
-
+##### Delete: todo #####
 # Allows access to the function in sql.py of the same name
 # TODO:
 # Pull entry into a TableEntry object rather than just a list
+##### Delete END #####
 def get_most_recent_entry(table, only_id=False):
     manager = SQLManager()
     entry = manager.get_most_recent_entry(table, only_id)
@@ -217,7 +223,9 @@ def get_most_recent_entry(table, only_id=False):
 
 
 # Returns a player object given an interaction
+##### Delete: maybe - Art #####
 # Maybe move this function to a different file? Feels out of place
+##### Delete END #####
 def player_from_interaction(interaction: discord.Interaction) -> Player:
     author = interaction.user
     staff = False
