@@ -6,15 +6,6 @@ import json_parsing as json
 from configmanager import database_config_manager as db_cfm
 from bot_manager import *
 
-##### Delete: I don't think we need to every sync the commands ever - Art #####
-@tree.command(name="sync", description="Syncs command list, use only when necessary")
-async def sync(interaction: discord.Interaction):
-    tree.clear_commands(guild=interaction.guild)
-    await tree.sync()
-
-    interaction.response.send_message("Tree Sync'd.")
-##### Delete END #####
-
 @tree.command(name="setup", description="Starts the setup process")
 # Decorator to restrict this command to staff only
 # NOTE: Role is case sensitive
@@ -29,7 +20,11 @@ async def run_setup(interaction: discord.Interaction):
     if staff_role not in interaction.user.roles:
         return
     
-    
+    # NOTE:
+    # This command resets the database to its default state
+    # This means everything in the database will be lost
+    # So be careful running this command once the database has been populated
+    sql.reset_to_default()
     embed = discord.Embed(
         title="Want to open a new ticket?",
         description="Click the button below to start a new ticket.",
@@ -44,7 +39,7 @@ async def run_setup(interaction: discord.Interaction):
     # Creat the archive category
     ticket_archive = discord.utils.get(interaction.guild.categories, name="ticket-archive")
     if not ticket_archive:
-        ticket_category = await interaction.guild.create_category("ticket-archive")
+        ticket_archive = await interaction.guild.create_category("ticket-archive")
         
     # Create the json recieving channel within the "Tickets" category if it doesn't exist
     mineticket_feed_channel = discord.utils.get(
